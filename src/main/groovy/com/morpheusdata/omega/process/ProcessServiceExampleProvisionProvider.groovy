@@ -2,6 +2,7 @@ package com.morpheusdata.omega.process
 
 import com.morpheusdata.core.AbstractProvisionProvider
 import com.morpheusdata.core.MorpheusContext
+import com.morpheusdata.core.MorpheusProcessService
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.providers.WorkloadProvisionProvider
 import com.morpheusdata.model.ComputeServer
@@ -167,11 +168,11 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 		switch (exampleToRun) {
 			case ProcessExample.BASIC:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: ProcessStepType.EXECUTE_ACTION), "").blockingGet()
-				context.async.process.endProcessStep(workloadRequest.process, "complete", "basic output", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "basic output", true).blockingGet()
 				break
 			case ProcessExample.BASIC_CUSTOM:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
-				context.async.process.endProcessStep(workloadRequest.process, "complete", "basic custom output", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "basic custom output", true).blockingGet()
 				break
 			case ProcessExample.UPDATE:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
@@ -187,7 +188,7 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 
 					sleep(increment)
 				}
-				context.async.process.endProcessStep(workloadRequest.process, "complete", "final", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final", true).blockingGet()
 				break
 			case ProcessExample.FAIL:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
@@ -195,13 +196,13 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 						error: "failure by design\n",
 				)
 				context.async.process.updateProcessStep(workloadRequest.process, CUSTOM_STEP_TYPE, update, true).blockingGet()
-				context.async.process.endProcessStep(workloadRequest.process, "failed", "final", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_FAILED, "final", true).blockingGet()
 				break
 			case ProcessExample.MULTI:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "").blockingGet()
-				context.async.process.endProcessStep(workloadRequest.process, "complete", "final first", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final first", true).blockingGet()
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "").blockingGet()
-				context.async.process.endProcessStep(workloadRequest.process, "complete", "final second", true).blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final second", true).blockingGet()
 				break
 		}
 
