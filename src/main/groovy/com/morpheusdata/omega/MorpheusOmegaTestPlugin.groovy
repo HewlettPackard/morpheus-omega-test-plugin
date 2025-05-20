@@ -23,24 +23,24 @@ import com.morpheusdata.core.Plugin
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
 
-    @Override
-    String getCode() {
-        return 'morpheus-omega-test'
-    }
+	@Override
+	String getCode() {
+		return 'morpheus-omega-test'
+	}
 
-    @Override
-    void initialize() {
-        this.setName("Morpheus Omega Test")
-        this.registerProvider(new ProcessServiceExampleCloudProvider(this,this.morpheus))
-        this.registerProvider(new ProcessServiceExampleProvisionProvider(this,this.morpheus))
-        this.registerProvider(new ProcessServiceExamplesDataSource(this, this.morpheus))
-    }
+	@Override
+	void initialize() {
+		this.setName("Morpheus Omega Test")
+		this.registerProvider(new ProcessServiceExampleCloudProvider(this, this.morpheus))
+		this.registerProvider(new ProcessServiceExampleProvisionProvider(this, this.morpheus))
+		this.registerProvider(new ProcessServiceExamplesDataSource(this, this.morpheus))
+	}
 
-    /**
-     * Called when a plugin is being removed from the plugin manager (aka Uninstalled)
-     */
-    @Override
-    void onDestroy() {
-        //nothing to do for now
-    }
+	/**
+	 * Called when a plugin is being removed from the plugin manager (aka Uninstalled)
+	 */
+	@Override
+	void onDestroy() {
+		//nothing to do for now
+	}
 }

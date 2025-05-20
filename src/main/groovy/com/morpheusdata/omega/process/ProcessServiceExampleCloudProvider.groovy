@@ -43,7 +43,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	 */
 	@Override
 	Icon getIcon() {
-		return new Icon(path:'morpheus.svg', darkPath:'morpheus.svg')
+		return new Icon(path: 'morpheus.svg', darkPath: 'morpheus.svg')
 	}
 
 	/**
@@ -52,7 +52,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	@Override
 	Icon getCircularIcon() {
 		// TODO: change icon paths to correct filenames once added to your project
-		return new Icon(path:'cloud-circular.svg', darkPath:'cloud-circular-dark.svg')
+		return new Icon(path: 'cloud-circular.svg', darkPath: 'cloud-circular-dark.svg')
 	}
 
 	/**
@@ -66,7 +66,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	 */
 	@Override
 	Collection<ProvisionProvider> getAvailableProvisionProviders() {
-	    return this.@plugin.getProvidersByType(ProvisionProvider) as Collection<ProvisionProvider>
+		return this.@plugin.getProvidersByType(ProvisionProvider) as Collection<ProvisionProvider>
 	}
 
 	/**
@@ -127,7 +127,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	@Override
 	Collection<ComputeServerType> getComputeServerTypes() {
 		[
-		    new ComputeServerType(
+				new ComputeServerType(
 						code: 'omega.process.compute-server-type',
 						name: 'Process Service Example Server',
 						description: '',

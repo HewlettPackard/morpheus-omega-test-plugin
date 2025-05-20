@@ -89,7 +89,7 @@ class ProcessServiceExamplesDataSource extends AbstractDatasetProvider<ProcessEx
 		return item.toString()
 	}
 
-enum ProcessExample {
+	enum ProcessExample {
 		BASIC("Basic Example"),
 		BASIC_CUSTOM("Basic Example With Custom Step"),
 		UPDATE("Update Example"),
