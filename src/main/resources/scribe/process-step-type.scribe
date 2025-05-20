@@ -1,0 +1,5 @@
+resource "process-step-type" "process-service-example-step" {
+  code = "omega.process.custom-step"
+  description = "A custom step has occurred"
+  name = "Process Service Example - Custom Step"
+}
