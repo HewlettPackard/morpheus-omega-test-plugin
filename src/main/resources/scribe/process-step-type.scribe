@@ -3,3 +3,15 @@ resource "process-step-type" "process-service-example-step" {
   description = "A custom step has occurred"
   name = "Process Service Example - Custom Step"
 }
+
+resource "process-step-type" "process-service-example-step-first" {
+  code = "omega.process.custom-step-first"
+  description = "A first custom step has occurred"
+  name = "Process Service Example - Custom Step (1)"
+}
+
+resource "process-step-type" "process-service-example-step-second" {
+  code = "omega.process.custom-step-second"
+  description = "A second custom step has occurred"
+  name = "Process Service Example - Custom Step (2)"
+}

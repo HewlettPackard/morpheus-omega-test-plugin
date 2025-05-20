@@ -28,6 +28,8 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 	// This code matches what we declared in 'resources/scribe/process-step-type.scribe' and will be seeded in
 	// on plugin load
 	public static ProcessStepType CUSTOM_STEP_TYPE = ProcessStepType.forCode("omega.process.custom-step")
+	public static ProcessStepType CUSTOM_STEP_FIRST_TYPE = ProcessStepType.forCode("omega.process.custom-step-first")
+	public static ProcessStepType CUSTOM_STEP_SECOND_TYPE = ProcessStepType.forCode("omega.process.custom-step-second")
 
 	protected MorpheusContext context
 	protected Plugin plugin
@@ -195,6 +197,12 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				)
 				context.async.process.updateProcessStep(workloadRequest.process, CUSTOM_STEP_TYPE, update, true).blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, "failed", "final").blockingGet()
+				break
+			case ProcessExample.MULTI:
+				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "").blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, "complete", "final first").blockingGet()
+				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "").blockingGet()
+				context.async.process.endProcessStep(workloadRequest.process, "complete", "final second").blockingGet()
 				break
 		}
 
