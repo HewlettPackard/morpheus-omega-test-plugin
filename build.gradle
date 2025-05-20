@@ -21,6 +21,7 @@ apply plugin: 'idea'
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'asset-pipeline'
 apply plugin: 'com.morpheusdata.morpheus-plugin-gradle'
+apply plugin: 'codenarc'
 
 
 group = 'com.morpheusdata'
@@ -45,8 +46,7 @@ configurations {
 
 dependencies {
 	provided "com.morpheusdata:morpheus-plugin-api:$morpheusApiVersion"
-	
-	
+
 	provided "org.codehaus.groovy:groovy-all:$groovyVersion"
 	implementation 'commons-beanutils:commons-beanutils:1.9.3'
 	implementation "org.slf4j:slf4j-api:$slf4jVersion"
@@ -111,3 +111,11 @@ test {
 	}
 }
 tasks.assemble.dependsOn tasks.shadowJar
+
+codenarc {
+	toolVersion = '3.6.0'  // Use the latest version
+	configFile = file('config/codenarc/ruleset.groovy')
+	reportFormat = 'console'
+	maxPriority1Violations = 0
+	maxPriority2Violations = 5
+}
