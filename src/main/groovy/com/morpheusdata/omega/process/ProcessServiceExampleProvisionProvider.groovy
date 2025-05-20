@@ -179,7 +179,6 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				def increment = 10000
 				for (int i = 0; i < totalTime; i += increment) {
 					def update = new ProcessStepUpdate(
-							percent: (i / totalTime) as double,
 							status: "running (${i}ms)",
 							output: "output@${i}ms\n",
 							message: "message@${i}ms\n",
