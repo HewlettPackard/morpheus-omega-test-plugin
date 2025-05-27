@@ -166,14 +166,17 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 		// Load the example we're supposed to run. This was specified in the provisioning wizard
 		def exampleToRun = ProcessExample.valueOf(workload.configMap.example)
 		switch (exampleToRun) {
+			//  This is a example of adding a step using an existing ProcessStepType provided by morpheus
 			case ProcessExample.BASIC:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: ProcessStepType.EXECUTE_ACTION), "").blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "basic output", true).blockingGet()
 				break
+			// This is a example of adding a step using a custom ProcessStepType provided by this plugin
 			case ProcessExample.BASIC_CUSTOM:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "basic custom output", true).blockingGet()
 				break
+		  // This is a example of updating a step over a period of time using a custom ProcessStepType provided by this plugin
 			case ProcessExample.UPDATE:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
 				def totalTime = 60000
@@ -190,6 +193,7 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				}
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final", true).blockingGet()
 				break
+			// This is a example of failing a custom ProcessStepType provided by this plugin
 			case ProcessExample.FAIL:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
 				def update = new ProcessStepUpdate(
@@ -198,12 +202,43 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				context.async.process.updateProcessStep(workloadRequest.process, CUSTOM_STEP_TYPE, update, true).blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_FAILED, "final", true).blockingGet()
 				break
+			// This is a example of starting/ending multiple steps
 			case ProcessExample.MULTI:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "").blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final first", true).blockingGet()
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "").blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final second", true).blockingGet()
 				break
+			// An example combining all the other examples as one. This uses the synchronous API rather than the async one used above (i.e., context.services)
+			case ProcessExample.FULL:
+				// existing process step type
+				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: ProcessStepType.EXECUTE_ACTION), "")
+				context.services.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "basic output", true)
+
+				// custom process step type
+				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "")
+				context.services.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "custom", true)
+
+				// update a process step
+				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "")
+				def totalTime = 60000
+				def increment = 10000
+				for (int i = 0; i < totalTime; i += increment) {
+					def update = new ProcessStepUpdate(
+							status: "running (${i}ms)",
+							output: "output@${i}ms\n",
+					)
+					context.services.process.updateProcessStep(workloadRequest.process, CUSTOM_STEP_TYPE, update, true)
+
+					sleep(increment)
+				}
+				context.services.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final", true)
+
+				// If a step wasn't completed, it'll be automatically ended for us when the next is started, but we have less control over the final
+				// output and and status
+				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "")
+				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "")
+				context.services.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final", false)
 		}
 
 		return new ServiceResponse<ProvisionResponse>(
