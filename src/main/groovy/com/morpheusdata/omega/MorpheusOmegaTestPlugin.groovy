@@ -15,6 +15,7 @@
 */
 package com.morpheusdata.omega
 
+import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
@@ -34,6 +35,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new ProcessServiceExampleCloudProvider(this, this.morpheus))
 		this.registerProvider(new ProcessServiceExampleProvisionProvider(this, this.morpheus))
 		this.registerProvider(new ProcessServiceExamplesDataSource(this, this.morpheus))
+		this.registerProvider(new ProcessServiceComputeTypePackageProvider(this, this.morpheus))
 	}
 
 	/**

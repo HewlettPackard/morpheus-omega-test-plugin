@@ -15,3 +15,21 @@ resource "process-step-type" "process-service-example-step-second" {
   description = "A second custom step has occurred"
   name = "Process Service Example - Custom Step (2)"
 }
+
+resource "process-step-type" "process-service-example-package-install" {
+  code = "omega.process.custom-package-install"
+  description = "doing some install stuff"
+  name = "Process Service Example - Custom Install Step"
+}
+
+resource "process-step-type" "process-service-example-package-upgrade" {
+  code = "omega.process.custom-package-upgrade"
+  description = "doing some upgrade stuff"
+  name = "Process Service Example - Custom Upgrade Step"
+}
+
+resource "process-step-type" "process-service-example-package-delete" {
+  code = "omega.process.custom-package-delete"
+  description = "doing some delete stuff"
+  name = "Process Service Example - Custom Delete Step"
+}
