@@ -28,6 +28,12 @@ resource "process-step-type" "process-service-example-package-upgrade" {
   name = "Process Service Example - Custom Upgrade Step"
 }
 
+resource "process-step-type" "process-service-example-package-update" {
+  code = "omega.process.custom-package-update"
+  description = "doing some update stuff"
+  name = "Process Service Example - Custom Update Step"
+}
+
 resource "process-step-type" "process-service-example-package-delete" {
   code = "omega.process.custom-package-delete"
   description = "doing some delete stuff"

@@ -94,8 +94,11 @@ class ProcessServiceExamplesDataSource extends AbstractDatasetProvider<ProcessEx
 		BASIC_CUSTOM("Basic Example With Custom Step"),
 		UPDATE("Update Example"),
 		FAIL("Failed Step Example"),
+		FAIL_UNENDED("Fail with Unended Step Example"),
+		FAIL_EXCEPTION("Fail with Exception Example"),
 		MULTI("Multi Step Example"),
-		FULL("All Functionality Example");
+		FULL("All Functionality Example"),
+		NOOP("Noop Example");
 
 		private final String name
 

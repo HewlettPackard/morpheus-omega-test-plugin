@@ -201,7 +201,19 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				)
 				context.async.process.updateProcessStep(workloadRequest.process, CUSTOM_STEP_TYPE, update, true).blockingGet()
 				context.async.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_FAILED, "final", true).blockingGet()
-				break
+				return new ServiceResponse<ProvisionResponse>(
+						true,
+						null, // no message
+						null, // no errors
+						new ProvisionResponse(success: true, installAgent: false, skipNetworkWait: true, noAgent: true)
+				)
+				// This is a example of failing a custom ProcessStepType provided by this plugin
+			case ProcessExample.FAIL_UNENDED:
+				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
+				return ServiceResponse.error("failure by design")
+			case ProcessExample.FAIL_EXCEPTION:
+				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_TYPE), "").blockingGet()
+				throw new Exception("failure by exception")
 			// This is a example of starting/ending multiple steps
 			case ProcessExample.MULTI:
 				context.async.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "").blockingGet()
@@ -239,6 +251,10 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "")
 				context.services.process.startProcessStep(workloadRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "")
 				context.services.process.endProcessStep(workloadRequest.process, MorpheusProcessService.STATUS_COMPLETE, "final", false)
+				break
+			case ProcessExample.NOOP:
+				// do nothing intentionally
+				break
 		}
 
 		return new ServiceResponse<ProvisionResponse>(
