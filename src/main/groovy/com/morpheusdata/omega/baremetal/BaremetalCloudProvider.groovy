@@ -1,4 +1,4 @@
-package com.morpheusdata.omega.process
+package com.morpheusdata.omega.baremetal
 
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
@@ -18,13 +18,13 @@ import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
 import com.morpheusdata.response.ServiceResponse
 
-class ProcessServiceExampleCloudProvider implements CloudProvider {
-	public static final String CLOUD_PROVIDER_CODE = 'omega.process.cloud'
+class BaremetalCloudProvider implements CloudProvider {
+	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
 
 	protected MorpheusContext context
 	protected Plugin plugin
 
-	ProcessServiceExampleCloudProvider(Plugin plugin, MorpheusContext ctx) {
+	BaremetalCloudProvider(Plugin plugin, MorpheusContext ctx) {
 		super()
 		this.@plugin = plugin
 		this.@context = ctx
@@ -34,8 +34,16 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	 * {@inheritDoc}
 	 */
 	@Override
+	CloudClassification getCloudClassification() {
+		return CloudClassification.PRIVATE
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	String getDescription() {
-		return 'An example cloud plugin showing how to use the ProcessService APIs.'
+		return 'An example cloud plugin for supporting baremetal'
 	}
 
 	/**
@@ -43,7 +51,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	 */
 	@Override
 	Icon getIcon() {
-		return new Icon(path: 'omega.svg', darkPath: 'omega-dark.svg')
+		return new Icon(path:'omega.svg', darkPath:'omega-dark.svg')
 	}
 
 	/**
@@ -51,23 +59,39 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	 */
 	@Override
 	Icon getCircularIcon() {
-		return new Icon(path: 'omega-circular.svg', darkPath: 'omega-circular-dark.svg')
+		return new Icon(path:'omega-circular.svg', darkPath:'omega-circular-dark.svg')
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	Collection<OptionType> getOptionTypes() { [] }
+	Collection<OptionType> getOptionTypes() {
+		[
+				// Since we have multiple network types, we need to add this to the cloud so we can see them during provisioning
+				new OptionType(
+						name: 'Enable Network Type Selection',
+						code: 'omega.baremetal.enable-network-type-selection',
+						displayOrder: 8,
+						fieldContext: 'config',
+						fieldName: 'enableNetworkTypeSelection',
+						fieldCode: 'gomorpheus.label.enableNetworkTypeSelection',
+						fieldGroup: 'Advanced',
+						inputType: OptionType.InputType.CHECKBOX,
+						defaultValue: true,
+				)]
+	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	Collection<ProvisionProvider> getAvailableProvisionProviders() {
-
 		return (this.@plugin.getProvidersByType(ProvisionProvider) as Collection<ProvisionProvider>).findAll{
-				it.code in [ProcessServiceExampleProvisionProvider.PROVISION_PROVIDER_CODE]
+			it.code in [
+					BaremetalManualProvisionProvider.PROVISION_PROVIDER_CODE,
+					BaremetalProvisionProvider.PROVISION_PROVIDER_CODE,
+			]
 		}
 	}
 
@@ -79,28 +103,26 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * We at least need a single network to use during provisioning
 	 */
 	@Override
 	Collection<NetworkType> getNetworkTypes() {
 		[
 				new NetworkType([
-						code: 'omega.process.network',
-						name: 'Process Service Example - Unmanaged Network',
-						description: '',
-						overlay: false,
-						externalType: 'External',
-						creatable: true,
-						cidrEditable: true,
-						dhcpServerEditable: true,
-						dnsEditable: true,
-						gatewayEditable: true,
-						cidrRequired: false,
-						vlanIdEditable: true,
-						canAssignPool: true,
-						hasNetworkServer: false,
-						hasCidr: true
+						code				: 'omega.baremetal.network',
+						name				: 'Omega Baremetal - Unmanaged Network',
+						description			: '',
+						overlay				: false,
+						externalType		: 'External',
+						creatable			: true,
+						cidrEditable		: true,
+						dhcpServerEditable	: true,
+						dnsEditable			: true,
+						gatewayEditable		: true,
+						cidrRequired		: false,
+						vlanIdEditable		: true,
+						canAssignPool		: true,
+						hasNetworkServer	: false,
+						hasCidr				: true
 				])
 		]
 	}
@@ -112,51 +134,51 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	Collection<NetworkSubnetType> getSubnetTypes() { [] }
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Collection<StorageVolumeType> getStorageVolumeTypes() { [] }
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Collection<StorageControllerType> getStorageControllerTypes() { [] }
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Collection<ComputeServerType> getComputeServerTypes() {
 		[
 				new ComputeServerType(
-						code: 'omega.process.compute-server-type',
-						name: 'Process Service Example Server',
-						description: '',
-						platform: PlatformType.none,
 						agentType: ComputeServerType.AgentType.guest,
-						enabled: true,
-						selectable: false,
-						externalDelete: true,
-						managed: false,
+						bareMetalHost: true,
+						code: 'omega.baremetal.stub-server',
+						computeService: null,
+						containerHypervisor: false,
 						controlPower: true,
 						controlSuspend: false,
 						creatable: true,
-						computeService: null,
-						displayOrder: 1,
-						hasAutomation: false,
-						provisionTypeCode: ProcessServiceExampleProvisionProvider.PROVISION_PROVIDER_CODE,
-						containerHypervisor: false,
-						bareMetalHost: true,
-						vmHypervisor: false,
+						description: 'A stubbed server that has no real backing server.',
+						displayOrder: 99,
+						enabled: true,
+						externalDelete: true,
 						guestVm: false,
+						hasAutomation: false,
+						managed: false,
+						name: 'Omega Baremetal Stub Server',
+						platform: PlatformType.none,
+						provisionTypeCode: 'omega.baremetal.manual-provision',
+						selectable: false,
 						supportsConsoleKeymap: true,
+						vmHypervisor: false,
 				)
 		]
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse validate(Cloud cloud, ValidateCloudRequest validateCloudRequest) {
@@ -164,7 +186,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse initializeCloud(Cloud cloud) {
@@ -172,7 +194,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse refresh(Cloud cloud) {
@@ -180,14 +202,14 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	void refreshDaily(Cloud cloud) {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse deleteCloud(Cloud cloud) {
@@ -195,7 +217,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean hasComputeZonePools() {
@@ -203,15 +225,15 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean hasNetworks() {
-		return false
+		return true
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean hasFolders() {
@@ -219,31 +241,33 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean hasDatastores() {
-		return false
+		return true
 	}
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * Must set this to true to flag this cloud has baremetal resources. This makes the 'Baremetal' tab to show in the UI.
 	 */
 	@Override
 	Boolean hasBareMetal() {
-		return false
+		return true
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean hasCloudInit() {
-		return false
+		return true
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Boolean supportsDistributedWorker() {
@@ -251,7 +275,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse startServer(ComputeServer computeServer) {
@@ -259,7 +283,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse stopServer(ComputeServer computeServer) {
@@ -267,7 +291,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ServiceResponse deleteServer(ComputeServer computeServer) {
@@ -275,7 +299,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	ProvisionProvider getProvisionProvider(String providerCode) {
@@ -283,15 +307,15 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	String getDefaultProvisionTypeCode() {
-		return ProcessServiceExampleProvisionProvider.PROVISION_PROVIDER_CODE
+		return BaremetalProvisionProvider.PROVISION_PROVIDER_CODE
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	MorpheusContext getMorpheus() {
@@ -299,7 +323,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	Plugin getPlugin() {
@@ -307,7 +331,7 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	String getCode() {
@@ -315,10 +339,27 @@ class ProcessServiceExampleCloudProvider implements CloudProvider {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * {@inheritDoc} 
 	 */
 	@Override
 	String getName() {
-		return 'Omega Process Service'
+		return 'Omega Baremetal'
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Collection<String> getSupportedNetworkProviderCodes() { [ 'morpheus-arubacx-network' ] }
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Boolean canCreateNetworks() { true }
+
+	@Override
+	Boolean canCreateDatastores() {
+		return true
 	}
 }

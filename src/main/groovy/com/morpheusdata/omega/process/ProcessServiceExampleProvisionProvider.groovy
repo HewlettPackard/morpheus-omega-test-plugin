@@ -80,7 +80,7 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 	 */
 	@Override
 	Icon getCircularIcon() {
-		return new Icon(path: 'morpheus.svg', darkPath: 'morpheus.svg')
+		return new Icon(path: 'omega-circular.svg', darkPath: 'omega-circular-dark.svg')
 	}
 
 	/**
@@ -367,10 +367,12 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 	 */
 	@Override
 	String getName() {
-		return 'Process Service Example Provisioning'
+		return 'Omega Process Service'
 	}
 
-	/**
+	@Override
+	String getDefaultInstanceTypeDescription() { "Provision example process service usecases." }
+/**
 	 * {@inheritDoc}
 	 *
 	 * We're not really provisioning, so don't make the user pick an image

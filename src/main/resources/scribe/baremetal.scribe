@@ -1,0 +1,78 @@
+resource "workload-type" "omega-baremetal-1_0" {
+  code             = "omega.baremetal.provision"
+  shortName        = "baremetal"
+  name             = "Bare Metal Server"
+  ports = []
+  containerVersion = "1.0"
+  repositoryImage  = ""
+  entryPoint       = ""
+  category         = "omega.baremetal"
+  statTypeCode     = "vm"
+  logTypeCode      = "omega.baremetal"
+  checkTypeCode    = "vmCheck"
+  serverType       = "vm"
+  mountPoint       = "/data"
+  provisionType    = "omega.baremetal.provision"
+  actions = ["generic-remove-node"]
+}
+
+resource "workload-type-set" "omega-baremetal-1_0-set" {
+  code           = "omega.baremetal.provision.containerTypeSet"
+  workloadType   = workload-type.omega-baremetal-1_0
+  priorityOrder  = 0
+  dynamicCount   = true
+  containerCount = 1
+}
+
+resource "instance-type" "omega-baremetal" {
+  code                    = "omega.baremetal.provision"
+  name                    = "Omega Bare Metal"
+  category                = "cloud"
+  active                  = true
+  enabled                 = true
+  viewSet                 = "omega.baremetal"
+  stackTier               = 30
+  hasConfig               = false
+  hasSettings             = false
+  hasDeployment           = false
+  deploymentService       = "defaultDeployService"
+  versions = ["1.0"]
+  hasAutoScale            = true
+  description             = "Provision any Bare Metal ISO or Template"
+  provisionTypeDefault    = true
+  environmentPrefix       = "OBM"
+  provisionSelectType     = "zone"
+  provisionType           = "omega.baremetal.provision"
+  pluginIconPath          = "omega.svg"
+  pluginIconDarkPath      = "omega-dark.svg"
+  pluginIconHidpiPath     = "omega.svg"
+  pluginIconDarkHidpiPath = "omega-dark.svg"
+  optionTypes             = [
+    "instanceType.exposePorts"
+  ]
+}
+
+resource "instance-type-layout" "omega-baremetal-1_0-single" {
+  code            = "omega.baremetal.provision"
+  name            = "Single Baremetal Server"
+  sortOrder       = 0
+  instanceVersion = "1.0"
+  description     = "This will provision a single process with no redundancy"
+  instanceType    = instance-type.omega-baremetal
+  serverCount     = 1
+  portCount       = 1
+  enabled         = true
+  creatable       = true
+  containers      = [workload-type-set.omega-baremetal-1_0-set]
+  actions         = ["generic-add-node"]
+  optionTypes     = []
+  provisionType   = "omega.baremetal.provision"
+}
+
+resource "scale-action" "omega-baremetal-1_0-single" {
+  code       = "omega-baremetal-1_0-single"
+  scaleType  = "action"
+  layout     = instance-type-layout.omega-baremetal-1_0-single
+  upAction   = "generic-add-node"
+  downAction = "generic-remove-node"
+}

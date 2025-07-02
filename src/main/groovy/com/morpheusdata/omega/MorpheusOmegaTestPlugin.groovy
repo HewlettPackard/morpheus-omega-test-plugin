@@ -15,6 +15,9 @@
 */
 package com.morpheusdata.omega
 
+import com.morpheusdata.omega.baremetal.BaremetalCloudProvider
+import com.morpheusdata.omega.baremetal.BaremetalManualProvisionProvider
+import com.morpheusdata.omega.baremetal.BaremetalProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
@@ -32,10 +35,15 @@ class MorpheusOmegaTestPlugin extends Plugin {
 	@Override
 	void initialize() {
 		this.setName("Morpheus Omega Test")
+
 		this.registerProvider(new ProcessServiceExampleCloudProvider(this, this.morpheus))
 		this.registerProvider(new ProcessServiceExampleProvisionProvider(this, this.morpheus))
 		this.registerProvider(new ProcessServiceExamplesDataSource(this, this.morpheus))
 		this.registerProvider(new ProcessServiceComputeTypePackageProvider(this, this.morpheus))
+
+		this.registerProvider(new BaremetalCloudProvider(this,this.morpheus))
+		this.registerProvider(new BaremetalProvisionProvider(this,this.morpheus))
+		this.registerProvider(new BaremetalManualProvisionProvider(this,this.morpheus))
 	}
 
 	/**
