@@ -218,8 +218,12 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 		}
 		context.services.computeServer.computeServerInterface.bulkSave(workload.server.interfaces)
 
-		// clear out the default root volume that is created during provision.
-		workload.server.volumes.removeIf {it.rootVolume}
+		// Clear out the volume that was created as our 'root' volume during provisioning.
+		def rootVol  = workload.server.volumes.find { it.rootVolume }
+		if (rootVol) {
+			context.async.storageVolume.remove([rootVol], workload.server, true).blockingGet()
+			workload.server = context.services.computeServer.get(workload.server.id)
+		}
 
 		// mark the underlying server available again so it returns to the pool of available servers.
 		workload.server.status = 'available'
