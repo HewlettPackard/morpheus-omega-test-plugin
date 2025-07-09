@@ -15,6 +15,8 @@
 */
 package com.morpheusdata.omega
 
+import com.morpheusdata.omega.addon.AddonPackageTestClusterTabProvider
+import com.morpheusdata.omega.addon.AddonPackageTypeProvider
 import com.morpheusdata.omega.baremetal.BaremetalCloudProvider
 import com.morpheusdata.omega.baremetal.BaremetalManualProvisionProvider
 import com.morpheusdata.omega.baremetal.BaremetalProvisionProvider
@@ -44,6 +46,9 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new BaremetalCloudProvider(this,this.morpheus))
 		this.registerProvider(new BaremetalProvisionProvider(this,this.morpheus))
 		this.registerProvider(new BaremetalManualProvisionProvider(this,this.morpheus))
+
+		this.registerProvider(new AddonPackageTestClusterTabProvider(this,this.morpheus))
+		this.registerProvider(new AddonPackageTypeProvider(this,this.morpheus))
 	}
 
 	/**
