@@ -3,7 +3,12 @@ package com.morpheusdata.omega.baremetal
 import com.morpheusdata.PrepareHostResponse
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
+import com.morpheusdata.core.data.DataFilter
+import com.morpheusdata.core.data.DataOrFilter
+import com.morpheusdata.core.data.DataQuery
+import com.morpheusdata.core.data.NullDataFilter
 import com.morpheusdata.core.providers.HostProvisionProvider
+import com.morpheusdata.model.ComputeDevice
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerInterface
 import com.morpheusdata.model.ComputeServerInterfaceType
@@ -129,6 +134,66 @@ class BaremetalManualProvisionProvider implements HostProvisionProvider, HostPro
         }
 
         context.async.computeServer.computeServerInterface.create(netInterfaces, server).blockingGet()
+        server = context.services.computeServer.get(server.id)
+
+        // Pretend we discovered some devices on this server.
+        def discoveredDevices = [
+            [ name: "Generic USB", vendorId: 1, productId: 1, type: 'usb_device', domain: 0000, bus: 00, device: 14, function: 0, iommuGroup: 0 ], // generic usb
+            [ name: "Generic PCI", vendorId: 1, productId: 1, type: 'pci', domain: 0000, bus: 0x0e, device: 01, function: 0, iommuGroup: 0 ], // generic pci
+            [ name: "Nvidia Generic GPU", vendorId: 4318, type: 'pci', domain: 0000, bus: 0x0e, device: 02, function: 0, iommuGroup: 0 ], // Nvidia Generic GPU
+            [ name: "Nvidia GeForce RTX 4090", vendorId: 4318, productId: 9860, type: 'pci', domain: 0000, bus: 0x0e, device: 13, function: 0, iommuGroup: 0 ], // Nvidia GeForce RTX 4090
+            [ name: "Omega Baremetal GPU", vendorId: 1337, productId: 1337, type: 'pci', domain: 0000, bus: 0x0e, device: 14, function: 0, iommuGroup: 0 ], // Fake device type that doesn't really exist
+        ]
+
+        for (def discoveredDevice in discoveredDevices) {
+            // check if we know the exact type of the device by vendorId and productId
+            def type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilters(
+                new DataFilter('vendorId', discoveredDevice.vendorId),
+                new DataFilter('productId', discoveredDevice.productId),
+            ))
+
+            if(!type) {
+                // well maybe we know who made it at least and we can pick a generic type for that vendor
+                type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilters(
+                    new DataFilter('vendorId', discoveredDevice.vendorId),
+                    new NullDataFilter<>('productId'), // we want the generic type for this vendor, there shouldn't be a productId
+                    new DataFilter('bus_type', discoveredDevice.type), // pci or usb_device
+                ))
+            }
+
+            if(!type) {
+                // if we don't know the type by vendorId and productId but we know what kind of device it is, pick the generic
+                if (discoveredDevice.type == 'usb_device') {
+                    type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilter(
+                        new DataFilter('code', 'usb'),
+                    ))
+                } else if (discoveredDevice.type == 'pci') {
+                    type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilter(
+                        new DataFilter('code', 'pci'),
+                    ))
+                }
+            }
+
+            if (!type) {
+                log.warn("Could not find a compute device type for vendorId: ${discoveredDevice.vendorId}, productId: ${discoveredDevice.productId}, type: ${discoveredDevice.type}")
+                return
+            }
+
+            def computeDevice = new ComputeDevice(
+                name: discoveredDevice.name,
+                vendorId: discoveredDevice.vendorId,
+                productId: discoveredDevice.productId,
+                type: type,
+                domainId: discoveredDevice.domain,
+                bus: discoveredDevice.bus,
+                device: discoveredDevice.device,
+                functionId: discoveredDevice.function,
+                iommuGroup: discoveredDevice.iommuGroup,
+                server: server, // you must have a server attached.
+            )
+            context.services.computeServer.computeDevice.create(computeDevice)
+        }
+
         return ServiceResponse.success()
     }
 

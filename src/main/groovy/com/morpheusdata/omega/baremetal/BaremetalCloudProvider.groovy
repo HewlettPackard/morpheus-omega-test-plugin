@@ -6,6 +6,7 @@ import com.morpheusdata.core.providers.CloudProvider
 import com.morpheusdata.core.providers.ProvisionProvider
 import com.morpheusdata.model.BackupProvider
 import com.morpheusdata.model.Cloud
+import com.morpheusdata.model.ComputeDeviceType
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerType
 import com.morpheusdata.model.Icon
@@ -60,6 +61,22 @@ class BaremetalCloudProvider implements CloudProvider {
 	@Override
 	Icon getCircularIcon() {
 		return new Icon(path:'omega-circular.svg', darkPath:'omega-circular-dark.svg')
+	}
+
+	@Override
+	Collection<ComputeDeviceType> getComputeDeviceTypes() {
+		[
+		    new ComputeDeviceType(
+						family: ComputeDeviceType.Family.GPU,
+						code: 'omega.baremetal.gpu',
+						hotpluggable: false,
+						productId: 1337,
+						vendorId: 1337,
+						busType: 'pci',
+						name: 'Omega Baremetal GPU',
+						assignable: true,
+				),
+		]
 	}
 
 	/**
@@ -173,6 +190,8 @@ class BaremetalCloudProvider implements CloudProvider {
 						selectable: false,
 						supportsConsoleKeymap: true,
 						vmHypervisor: false,
+						hasDevices: true, // This is required to show the 'Devices' tab in the UI for a compute server
+						supportsDeviceAttachment: false, // This is the default but to make it clear, this is a baremetal server and can't attach/detach devices
 				)
 		]
 	}
