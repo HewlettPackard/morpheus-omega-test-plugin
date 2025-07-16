@@ -120,7 +120,7 @@ class BaremetalManualProvisionProvider implements HostProvisionProvider, HostPro
                 primaryInterface: false,
                 ipMode: 'static',
             )
-            def syntheticIpAddr= (0..4).collect {
+            def syntheticIpAddr= (0..3).collect {
                 String.format("%d", new Random().nextInt(256))
             }.join(".")
             nic.addresses << new NetAddress(address: syntheticIpAddr, type: NetAddress.AddressType.IPV4)
