@@ -11,10 +11,12 @@ import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerInterfaceType
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.Instance
+import com.morpheusdata.model.NetAddress
 import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.ProvisionType
 import com.morpheusdata.model.ServicePlan
 import com.morpheusdata.model.StorageVolumeType
+import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
 import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
@@ -347,7 +349,7 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 	 * {@inheritDoc}
 	 */
 	@Override
-	Boolean requiresVirtualImage() { false }
+	Collection<VirtualImageType> getVirtualImageTypes() { [ new VirtualImageType(code: 'iso', name: 'ISO') ] }
 
 	/**
 	 * {@inheritDoc}

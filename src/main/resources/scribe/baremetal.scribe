@@ -1,3 +1,27 @@
+resource "option-type" "omega-baremetal-option-image" {
+  code         = "omega.baremetal.option.image"
+  type         = "select"
+  name         = "Images"
+  category     = "omega.baremetal"
+  fieldName    = "imageId"
+  optionSource = "virtualImages"
+  fieldCode    = "gomorpheus.optiontype.Image"
+  fieldLabel   = "Image"
+  fieldContext = "config"
+  fieldGroup   = "Options"
+  required     = true
+  enabled      = true
+  editable     = false
+  global       = false
+  placeHolder  = null
+  helpBlock    = ""
+  defaultValue = null
+  custom       = false
+  displayOrder = 1
+  fieldClass   = null
+  description  = "Choose from a list of Virtual Images that might want to be provisioned."
+}
+
 resource "workload-type" "omega-baremetal-1_0" {
   code             = "omega.baremetal.provision"
   shortName        = "baremetal"
@@ -48,6 +72,7 @@ resource "instance-type" "omega-baremetal" {
   pluginIconHidpiPath     = "omega.svg"
   pluginIconDarkHidpiPath = "omega-dark.svg"
   optionTypes             = [
+   "omega.baremetal.option.image",
     "instanceType.exposePorts"
   ]
 }
