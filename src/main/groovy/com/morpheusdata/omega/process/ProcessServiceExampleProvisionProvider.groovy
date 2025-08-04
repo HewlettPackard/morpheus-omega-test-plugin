@@ -1,9 +1,12 @@
 package com.morpheusdata.omega.process
 
+import com.morpheusdata.PrepareHostResponse
+
 import com.morpheusdata.core.AbstractProvisionProvider
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.MorpheusProcessService
 import com.morpheusdata.core.Plugin
+import com.morpheusdata.core.providers.HostProvisionProvider
 import com.morpheusdata.core.providers.WorkloadProvisionProvider
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.Icon
@@ -14,6 +17,7 @@ import com.morpheusdata.model.ProcessStepUpdate
 import com.morpheusdata.model.ServicePlan
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.model.Workload
+import com.morpheusdata.model.provisioning.HostRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
@@ -24,7 +28,7 @@ import static com.morpheusdata.omega.process.ProcessServiceExamplesDataSource.*
 
 
 @Slf4j
-class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider {
+class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, HostProvisionProvider {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.process.provision'
 	// This code matches what we declared in 'resources/scribe/process-step-type.scribe' and will be seeded in
 	// on plugin load
@@ -370,13 +374,57 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 		return 'Omega Process Service'
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	String getDefaultInstanceTypeDescription() { "Provision example process service usecases." }
-/**
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * We're not really provisioning, so don't make the user pick an image
 	 */
 	@Override
 	Boolean requiresVirtualImage() { false }
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse validateHost(ComputeServer server, Map opts) { ServiceResponse.success() }
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<PrepareHostResponse> prepareHost(ComputeServer server, HostRequest hostRequest, Map opts) {
+		context.services.process.startProcessStep(hostRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_FIRST_TYPE), "")
+		return ServiceResponse.success(new PrepareHostResponse(computeServer: server, options: opts))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<ProvisionResponse> runHost(ComputeServer server, HostRequest hostRequest, Map opts) {
+		context.services.process.startProcessStep(hostRequest.process, new ProcessEvent(stepType: CUSTOM_STEP_SECOND_TYPE), "")
+		return ServiceResponse.success(new ProvisionResponse(installAgent: false, noAgent: true))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<ProvisionResponse> waitForHost(ComputeServer server) {
+		return ServiceResponse.success(new ProvisionResponse(installAgent: false, noAgent: true, skipNetworkWait: true))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse finalizeHost(ComputeServer server) {
+		return ServiceResponse.success()
+	}
 }
