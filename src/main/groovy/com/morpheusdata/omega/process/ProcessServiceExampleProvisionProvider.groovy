@@ -28,7 +28,7 @@ import static com.morpheusdata.omega.process.ProcessServiceExamplesDataSource.*
 
 
 @Slf4j
-class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, HostProvisionProvider {
+class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, HostProvisionProvider, HostProvisionProvider.finalizeHostFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.process.provision'
 	// This code matches what we declared in 'resources/scribe/process-step-type.scribe' and will be seeded in
 	// on plugin load
@@ -425,6 +425,8 @@ class ProcessServiceExampleProvisionProvider extends AbstractProvisionProvider i
 	 */
 	@Override
 	ServiceResponse finalizeHost(ComputeServer server) {
+		server.status = 'available'
+		context.services.computeServer.save(server)
 		return ServiceResponse.success()
 	}
 }
