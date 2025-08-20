@@ -24,6 +24,8 @@ import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
+
+import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 
 @SuppressWarnings('unused')
@@ -49,6 +51,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new AddonPackageTestClusterTabProvider(this,this.morpheus))
 		this.registerProvider(new AddonPackageTypeProvider(this,this.morpheus))
+
+		this.registerProvider(new StorageServerProvider(this,this.morpheus))
 	}
 
 	/**
