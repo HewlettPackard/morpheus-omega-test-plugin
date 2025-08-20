@@ -9,9 +9,9 @@ import groovy.transform.CompileStatic
  */
 @CompileStatic
 class LogConstants {
-    static final String MESSAGE_PREFIX = '[HPEStoragePlugin]'
+    static final String MESSAGE_PREFIX = '[OmegaTestPlugin]'
 
     // Package prefix for callers making log requests. A file name and line number can be included in log messages
     // only for classes with this package prefix.
-    static final String CALLER_PACKAGE_PREFIX = "com.hpe"
+    static final String CALLER_PACKAGE_PREFIX = "com.morpheusdata"
 }

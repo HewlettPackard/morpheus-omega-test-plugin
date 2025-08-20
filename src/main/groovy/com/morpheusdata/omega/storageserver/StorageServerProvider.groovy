@@ -19,7 +19,7 @@ import groovy.json.JsonOutput
 
 class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 
-	public static final String STORAGE_PROVIDER_CODE = 'sstp'
+	public static final String STORAGE_PROVIDER_CODE = 'omega.sstp'
 
 	protected MorpheusContext morpheusContext
 	protected Plugin plugin
@@ -69,17 +69,17 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 
 	Collection<OptionType> getStorageServerOptionTypes() {
 		def optionTypes = []
-		optionTypes.push(new OptionType(code:'storageServer.global.serviceUrl', name:'serviceUrl', category:'storageServer.global',
+		optionTypes.push(new OptionType(code:'omega.storageServer.global.serviceUrl', name:'serviceUrl', category:'storageServer.global',
 				fieldName:'serviceUrl', fieldCode: 'gomorpheus.optiontype.Url', fieldLabel:'URL', fieldContext:'domain', required:true, enabled:true, editable:true, global:false,
 				placeHolder:null, helpBlock:'', defaultValue:null, custom:false, displayOrder:0, fieldClass:"storage-server-url", wrapperClass:null))
-		optionTypes.push(new OptionType(code:'storageServer.global.credential', name:'credentials', optionSource:'credentials',
+		optionTypes.push(new OptionType(code:'omega.storageServer.global.credential', name:'credentials', optionSource:'credentials',
 				category:'accountIntegrationType.global', fieldName:'type', fieldCode:'gomorpheus.label.credentials', fieldLabel:'Credentials',
 				fieldContext:'credential', required:true, enabled:true, editable:true, global:false, placeHolder:null, helpBlock:'', defaultValue:'local',
 				custom:false, displayOrder:5, fieldClass:null, wrapperClass:null, config:JsonOutput.toJson(credentialTypes:['username-password']).toString()))
-		optionTypes.push(new OptionType(code:'storageServer.global.serviceUsername', name:'serviceUsername', category:'storageServer.global',
+		optionTypes.push(new OptionType(code:'omega.storageServer.global.serviceUsername', name:'serviceUsername', category:'storageServer.global',
 				fieldName:'serviceUsername', fieldCode: 'gomorpheus.optiontype.Username', fieldLabel:'Username', fieldContext:'domain', required:true, enabled:true, editable:true, global:false,
 				placeHolder:null, helpBlock:'', defaultValue:null, custom:false, displayOrder:10, fieldClass:"storage-server-username", wrapperClass:null, localCredential:true))
-		optionTypes.push(new OptionType(code:'storageServer.global.servicePassword', name:'servicePassword', category:'storageServer.global',
+		optionTypes.push(new OptionType(code:'omega.storageServer.global.servicePassword', name:'servicePassword', category:'storageServer.global',
 				fieldName:'servicePassword', fieldCode: 'gomorpheus.optiontype.Password', fieldLabel:'Password', fieldContext:'domain', required:true, enabled:true, editable:true, global:false,
 				placeHolder:null, helpBlock:'', defaultValue:null, custom:false, displayOrder:15, fieldClass:"storage-server-password", wrapperClass:null, localCredential:true))
 		return optionTypes
@@ -219,7 +219,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	Collection<StorageVolumeType> getStorageVolumeTypes() {
 		def blockStorageType = new StorageVolumeType(
 			name: 'Block Storage',
-			code: 'sstp.block',
+			code: 'omega.sstp.block',
 			description: 'Block storage type for the SSTP plugin',
 			displayName: 'SSTP Block Storage',
 			volumeType: "volume",
@@ -243,7 +243,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 			maxIOPS: 100000,
 			optionTypes: [
 				new OptionType(
-					code: 'sstp.block.provisionType',
+					code: 'omega.sstp.block.provisionType',
 					name: 'Provision Type',
 					category: 'sstp.block',
 					fieldName: 'provisionType',
@@ -263,7 +263,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 					wrapperClass: null
 				),
 				new OptionType(
-						code: 'sstp.block.volumeSize',
+						code: 'omega.sstp.block.volumeSize',
 						name: 'Volume Size',
 						category: 'sstp.block',
 						fieldName: 'maxStorage',
