@@ -96,7 +96,19 @@ class BaremetalCloudProvider implements CloudProvider {
 						fieldGroup: 'Advanced',
 						inputType: OptionType.InputType.CHECKBOX,
 						defaultValue: true,
-				)]
+				),
+				new OptionType(
+						name: 'Enable Hypervisor Console',
+						code: 'omega.baremetal.enable-hypervisor-console',
+						displayOrder: 9,
+						fieldContext: 'config',
+						fieldName: 'enableVnc',
+						fieldLabel: 'Enable Hypervisor Console',
+						fieldGroup: 'Advanced',
+						inputType: OptionType.InputType.CHECKBOX,
+						defaultValue: true,
+				)
+		]
 	}
 
 	/**
@@ -192,6 +204,53 @@ class BaremetalCloudProvider implements CloudProvider {
 						vmHypervisor: false,
 						hasDevices: true, // This is required to show the 'Devices' tab in the UI for a compute server
 						supportsDeviceAttachment: false, // This is the default but to make it clear, this is a baremetal server and can't attach/detach devices
+						optionTypes: [
+										new OptionType(
+												name: 'iLO Server IP',
+												code: 'omega.baremetal.manual-provision.ilo-server-ip',
+												category: 'omega.baremetal.manual-provision',
+												inputType: OptionType.InputType.TEXT,
+												fieldName: 'consoleHost',
+												fieldContext: 'config',
+												fieldLabel: 'iLO Server IP',
+												displayOrder: 1,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+										),
+										new OptionType(
+												name: 'iLO Server IP',
+												code: 'omega.baremetal.manual-provision.ilo-server-name',
+												category: 'omega.baremetal.manual-provision',
+												inputType: OptionType.InputType.TEXT,
+												fieldName: 'consoleUsername',
+												fieldContext: 'config',
+												fieldLabel: 'iLO Server Username',
+												displayOrder: 2,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+										),
+										new OptionType(
+												name: 'iLO Server Password',
+												code: 'omega.baremetal.manual-provision.ilo-server-password',
+												category: 'omega.baremetal.manual-provision',
+												inputType: OptionType.InputType.PASSWORD,
+												fieldName: 'consolePassword',
+												fieldContext: 'config',
+												fieldLabel: 'iLO Server Password',
+												displayOrder: 3,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+										)
+						]
 				)
 		]
 	}

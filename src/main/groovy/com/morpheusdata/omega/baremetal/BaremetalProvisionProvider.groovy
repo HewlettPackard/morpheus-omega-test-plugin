@@ -6,6 +6,7 @@ import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.ProvisionInstanceServers
 import com.morpheusdata.core.data.DataFilter
 import com.morpheusdata.core.data.DataQuery
+import com.morpheusdata.core.providers.ProvisionProvider
 import com.morpheusdata.core.providers.WorkloadProvisionProvider
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerInterfaceType
@@ -28,7 +29,7 @@ import com.morpheusdata.response.ServiceResponse
  * Provision provider for provisioning baremetal servers. This picks from the pool of servers in an 'available'
  * state.
  */
-class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers {
+class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"

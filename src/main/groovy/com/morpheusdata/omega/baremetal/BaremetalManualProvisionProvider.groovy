@@ -8,12 +8,14 @@ import com.morpheusdata.core.data.DataOrFilter
 import com.morpheusdata.core.data.DataQuery
 import com.morpheusdata.core.data.NullDataFilter
 import com.morpheusdata.core.providers.HostProvisionProvider
+import com.morpheusdata.core.providers.ProvisionProvider
 import com.morpheusdata.model.ComputeDevice
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerInterface
 import com.morpheusdata.model.ComputeServerInterfaceType
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.NetAddress
+import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.provisioning.HostRequest
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
@@ -23,7 +25,7 @@ import com.morpheusdata.response.ServiceResponse
  * You can imagine this is adding servers to our inventory that are available to provision
  * with.
  */
-class BaremetalManualProvisionProvider implements HostProvisionProvider, HostProvisionProvider.finalizeHostFacet {
+class BaremetalManualProvisionProvider implements HostProvisionProvider, HostProvisionProvider.finalizeHostFacet, ProvisionProvider.HypervisorConsoleFacet {
 
     public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.manual-provision'
     protected MorpheusContext context
@@ -106,7 +108,14 @@ class BaremetalManualProvisionProvider implements HostProvisionProvider, HostPro
         server.setConfigProperty("iqns", [
             "iqn.2016-04.com.hpe:${server.name}-${server.id}".toString(),
         ])
-        context.services.computeServer.save(server)
+
+			if (server.configMap?.consoleHost) {
+				server.consoleType = 'ilo'
+				server.consoleHost = server.configMap?.consoleHost
+				server.consoleUsername = server.configMap?.consoleUsername
+				server.consolePassword = server.configMap?.consolePassword
+			}
+			context.services.computeServer.save(server)
 
         def netInterfaces = []
         2.times { idx ->
