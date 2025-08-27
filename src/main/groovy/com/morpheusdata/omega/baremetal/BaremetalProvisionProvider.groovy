@@ -21,6 +21,7 @@ import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
 import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
+import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
@@ -29,7 +30,7 @@ import com.morpheusdata.response.ServiceResponse
  * Provision provider for provisioning baremetal servers. This picks from the pool of servers in an 'available'
  * state.
  */
-class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet {
+class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet, WorkloadProvisionProvider.ResizeFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"
@@ -450,4 +451,11 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 		return true
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse resizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+		return ServiceResponse.success()
+	}
 }
