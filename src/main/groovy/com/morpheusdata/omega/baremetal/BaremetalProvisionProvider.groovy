@@ -25,11 +25,14 @@ import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
+import com.morpheusdata.response.ValidateResizeWorkloadResponse
+import groovy.util.logging.Slf4j
 
 /**
  * Provision provider for provisioning baremetal servers. This picks from the pool of servers in an 'available'
  * state.
  */
+@Slf4j
 class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet, WorkloadProvisionProvider.ResizeFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
@@ -456,6 +459,16 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 	 */
 	@Override
 	ServiceResponse resizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+		log.info("resize called")
 		return ServiceResponse.success()
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<ValidateResizeWorkloadResponse> validateResizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+		log.info("validate resize called")
+		return ServiceResponse.success(new ValidateResizeWorkloadResponse(allowed: true, hotResize: false))
 	}
 }
