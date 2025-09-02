@@ -31,6 +31,11 @@ class BaremetalCloudProvider implements CloudProvider {
 		this.@context = ctx
 	}
 
+	@Override
+	Boolean canCreateCloudPools() {
+		return true
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -299,7 +304,7 @@ class BaremetalCloudProvider implements CloudProvider {
 	 */
 	@Override
 	Boolean hasComputeZonePools() {
-		return false
+		return true
 	}
 
 	/**
