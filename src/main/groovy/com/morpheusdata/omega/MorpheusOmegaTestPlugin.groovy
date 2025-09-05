@@ -20,6 +20,8 @@ import com.morpheusdata.omega.addon.AddonPackageTypeProvider
 import com.morpheusdata.omega.baremetal.BaremetalCloudProvider
 import com.morpheusdata.omega.baremetal.BaremetalManualProvisionProvider
 import com.morpheusdata.omega.baremetal.BaremetalProvisionProvider
+import com.morpheusdata.omega.event.EventClusterSubscribingIntegration
+import com.morpheusdata.omega.event.EventGlobalSubscribingProvider
 import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
@@ -53,6 +55,9 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new AddonPackageTypeProvider(this,this.morpheus))
 
 		this.registerProvider(new StorageServerProvider(this,this.morpheus))
+
+		this.registerProvider(new EventGlobalSubscribingProvider(this,this.morpheus))
+		this.registerProvider(new EventClusterSubscribingIntegration(this,this.morpheus))
 	}
 
 	/**
