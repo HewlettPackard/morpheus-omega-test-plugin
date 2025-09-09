@@ -200,6 +200,22 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	}
 
 	@Override
+	ServiceResponse<StorageVolume> updateVolume(StorageGroup storageGroup, StorageVolume storageVolume, Map opts) {
+		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
+		log.info("Options: ${opts?.dump()}")
+		storageVolume = morpheusContext.services.storage.volume.save(storageVolume)
+		return ServiceResponse.create([success: true, data: [storageVolume: storageVolume]])
+	}
+
+	@Override
+	ServiceResponse<StorageVolume> updateVolume(StorageServer storageServer, StorageVolume storageVolume, Map opts) {
+		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
+		log.info("Options: ${opts?.dump()}")
+		storageVolume = morpheusContext.services.storage.volume.save(storageVolume)
+		return ServiceResponse.create([success: true, data: [storageVolume: storageVolume]])
+	}
+
+	@Override
 	ServiceResponse<StorageVolume> deleteVolume(StorageGroup storageGroup, StorageVolume storageVolume, Map opts) {
 		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
 		log.info("Options: ${opts?.dump()}")
@@ -280,9 +296,9 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 						custom: false,
 						displayOrder: 2,
 						fieldClass: null,
+						fieldAddOn: 'MB',
 						wrapperClass: null,
 						inputType: OptionType.InputType.NUMBER,
-						helpText: 'The size of the volume to create in GiB. For example, 1024 for a 1TiB volume.',
 						minVal: 1
 				)
 			]
