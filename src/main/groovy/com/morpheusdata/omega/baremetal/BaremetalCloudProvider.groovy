@@ -36,6 +36,11 @@ class BaremetalCloudProvider implements CloudProvider {
 		return true
 	}
 
+	@Override
+	Boolean canDeleteCloudPools() {
+		return true
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -446,3 +451,4 @@ class BaremetalCloudProvider implements CloudProvider {
 		return true
 	}
 }
+
