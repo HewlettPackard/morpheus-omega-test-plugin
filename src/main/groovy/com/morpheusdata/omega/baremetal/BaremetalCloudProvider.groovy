@@ -128,7 +128,6 @@ class BaremetalCloudProvider implements CloudProvider {
 	Collection<ProvisionProvider> getAvailableProvisionProviders() {
 		return (this.@plugin.getProvidersByType(ProvisionProvider) as Collection<ProvisionProvider>).findAll{
 			it.code in [
-					BaremetalManualProvisionProvider.PROVISION_PROVIDER_CODE,
 					BaremetalProvisionProvider.PROVISION_PROVIDER_CODE,
 			]
 		}
@@ -208,7 +207,7 @@ class BaremetalCloudProvider implements CloudProvider {
 						managed: false,
 						name: 'Omega Baremetal Stub Server',
 						platform: PlatformType.none,
-						provisionTypeCode: 'omega.baremetal.manual-provision',
+						provisionTypeCode: 'omega.baremetal.provision',
 						selectable: false,
 						supportsConsoleKeymap: true,
 						vmHypervisor: false,
@@ -217,7 +216,7 @@ class BaremetalCloudProvider implements CloudProvider {
 						optionTypes: [
 										new OptionType(
 												name: 'iLO Server IP',
-												code: 'omega.baremetal.manual-provision.ilo-server-ip',
+												code: 'omega.baremetal.provision.ilo-server-ip',
 												category: 'omega.baremetal.manual-provision',
 												inputType: OptionType.InputType.TEXT,
 												fieldName: 'consoleHost',
@@ -232,7 +231,7 @@ class BaremetalCloudProvider implements CloudProvider {
 										),
 										new OptionType(
 												name: 'iLO Server IP',
-												code: 'omega.baremetal.manual-provision.ilo-server-name',
+												code: 'omega.baremetal.provision.ilo-server-name',
 												category: 'omega.baremetal.manual-provision',
 												inputType: OptionType.InputType.TEXT,
 												fieldName: 'consoleUsername',
@@ -247,7 +246,7 @@ class BaremetalCloudProvider implements CloudProvider {
 										),
 										new OptionType(
 												name: 'iLO Server Password',
-												code: 'omega.baremetal.manual-provision.ilo-server-password',
+												code: 'omega.baremetal.provision.ilo-server-password',
 												category: 'omega.baremetal.manual-provision',
 												inputType: OptionType.InputType.PASSWORD,
 												fieldName: 'consolePassword',
