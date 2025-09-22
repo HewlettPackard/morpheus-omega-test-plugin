@@ -232,7 +232,7 @@ class BaremetalCloudProvider implements CloudProvider {
 										new OptionType(
 												name: 'iLO Server IP',
 												code: 'omega.baremetal.provision.ilo-server-name',
-												category: 'omega.baremetal.manual-provision',
+												category: 'omega.baremetal.provision',
 												inputType: OptionType.InputType.TEXT,
 												fieldName: 'consoleUsername',
 												fieldContext: 'config',
@@ -247,7 +247,7 @@ class BaremetalCloudProvider implements CloudProvider {
 										new OptionType(
 												name: 'iLO Server Password',
 												code: 'omega.baremetal.provision.ilo-server-password',
-												category: 'omega.baremetal.manual-provision',
+												category: 'omega.baremetal.provision',
 												inputType: OptionType.InputType.PASSWORD,
 												fieldName: 'consolePassword',
 												fieldContext: 'config',
@@ -258,6 +258,22 @@ class BaremetalCloudProvider implements CloudProvider {
 												editable: false,
 												global: false,
 												custom: false,
+										),
+										new OptionType(
+												name: 'Pre-provisioned',
+												code: 'omega.baremetal.provision.pre-provisioned',
+												category: 'omega.baremetal.provision',
+												inputType: OptionType.InputType.CHECKBOX,
+												fieldName: 'preProvisioned',
+												fieldContext: 'domain',
+												fieldLabel: 'Pre-provisioned',
+												displayOrder: 4,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+												helpText: "Indicates if this server is already provisioned with an OS. Allows for convert to managed.",
 										)
 						]
 				)

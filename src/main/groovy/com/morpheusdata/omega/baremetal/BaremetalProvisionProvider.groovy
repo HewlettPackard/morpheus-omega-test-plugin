@@ -594,7 +594,11 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 */
 	@Override
 	ServiceResponse finalizeHost(ComputeServer server) {
-		server.status = 'available'
+		if (server.preProvisioned) {
+			server.status = 'provisioned'
+		} else {
+			server.status = 'available'
+		}
 		// Add wwpns so we can interact with alletra plugin for FC
 		server.setConfigProperty("wwpns", [
 				'BE:EF:CA:FE:' + (0..3).collect {
