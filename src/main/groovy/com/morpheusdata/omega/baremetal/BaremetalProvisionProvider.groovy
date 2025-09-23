@@ -613,6 +613,7 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 			server.consoleUsername = server.configMap?.consoleUsername
 			server.consolePassword = server.configMap?.consolePassword
 		}
+		server.plan = context.services.servicePlan.find(new DataQuery().withFilter('code', 'omega.baremetal.any'))
 		context.services.computeServer.save(server)
 
 		def netInterfaces = []
