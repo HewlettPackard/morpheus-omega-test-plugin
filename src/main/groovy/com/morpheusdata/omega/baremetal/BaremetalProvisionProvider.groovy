@@ -16,6 +16,7 @@ import com.morpheusdata.model.NetAddress
 import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.ProvisionType
 import com.morpheusdata.model.ServicePlan
+import com.morpheusdata.model.Snapshot
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
@@ -33,7 +34,7 @@ import groovy.util.logging.Slf4j
  * state.
  */
 @Slf4j
-class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet, WorkloadProvisionProvider.ResizeFacet {
+class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet, WorkloadProvisionProvider.ResizeFacet, ProvisionProvider.SnapshotFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"
