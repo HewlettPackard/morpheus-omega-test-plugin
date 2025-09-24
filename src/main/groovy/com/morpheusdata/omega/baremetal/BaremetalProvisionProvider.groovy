@@ -472,4 +472,10 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 		log.info("validate resize called")
 		return ServiceResponse.success(new ValidateResizeWorkloadResponse(allowed: true, hotResize: false))
 	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Boolean canReconfigureNetwork() { true }
 }
