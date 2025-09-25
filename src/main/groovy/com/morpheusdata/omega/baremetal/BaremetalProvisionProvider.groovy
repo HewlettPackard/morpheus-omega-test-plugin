@@ -594,8 +594,9 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 */
 	@Override
 	ServiceResponse finalizeHost(ComputeServer server) {
-		if (server.preProvisioned) {
+		if (server.configMap?.preProvisioned) {
 			server.status = 'provisioned'
+			server.preProvisioned = true
 		} else {
 			server.status = 'available'
 		}
@@ -716,5 +717,13 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	ServiceResponse<ConvertToManagedResponse> convertToManaged(ConvertToManagedRequest convertToManagedRequest) {
 		log.info("Convert to managed called")
 		return ServiceResponse.success(new ConvertToManagedResponse())
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Boolean supportsAddPreprovisionedServer() {
+		return true
 	}
 }

@@ -265,7 +265,7 @@ class BaremetalCloudProvider implements CloudProvider {
 												category: 'omega.baremetal.provision',
 												inputType: OptionType.InputType.CHECKBOX,
 												fieldName: 'preProvisioned',
-												fieldContext: 'domain',
+												fieldContext: 'config',
 												fieldLabel: 'Pre-provisioned',
 												displayOrder: 4,
 												required: false,
@@ -464,6 +464,11 @@ class BaremetalCloudProvider implements CloudProvider {
 	@Override
 	Boolean canCreateDatastores() {
 		return true
+	}
+
+	@Override
+	Boolean hasSecurityGroups() {
+		return false
 	}
 }
 
