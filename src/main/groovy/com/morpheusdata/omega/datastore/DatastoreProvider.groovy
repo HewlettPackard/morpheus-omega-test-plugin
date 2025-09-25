@@ -7,6 +7,7 @@ import com.morpheusdata.core.providers.DatastoreTypeProvider
 import com.morpheusdata.model.*
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.response.ServiceResponse
+import com.morpheusdata.request.CreateSnapshotRequest
 import groovy.util.logging.Slf4j
 
 import java.time.Instant
@@ -15,7 +16,7 @@ import java.time.Instant
  * An example datastore provider
  */
 @Slf4j
-class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.SnapshotFacet.SnapshotServerFacet {
+class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.SnapshotFacet.SnapshotServerFacet, DatastoreTypeProvider.SnapshotFacet.SnapshotInstanceFacet {
 	public static final String PROVIDER_CODE = "omega.datastore"
 
 	private final Plugin plugin
@@ -169,6 +170,62 @@ class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.
 	@Override
 	ServiceResponse removeSnapshot(ComputeServer server, Snapshot snapshot) {
 		log.info("Removing a snapshot")
+		return ServiceResponse.success()
+	}
+
+    @Override
+    ServiceResponse<Snapshot> createSnapshot(Instance instance, CreateSnapshotRequest req) {
+        log.info("Creating an instance snapshot")
+        // Main instance snapshot
+        Snapshot instanceSnapshot = new Snapshot([name: "${instance.name}-${Instant.now().toEpochMilli()}"])
+        instanceSnapshot.instance = instance
+
+        instance.containers.each { container ->
+            def server =  morpheusContext.services.workload.get(container.id).server
+            // Create a snapshot for the server
+            Snapshot serverSnapshot = new Snapshot([name: "${server.name}-${Instant.now().toEpochMilli()}"])
+            serverSnapshot.server = server
+			serverSnapshot.cloud = server.cloud
+            // Add a snapshot file for each data volume of the server
+            serverSnapshot.snapshotFiles = server.volumes.findAll { volume ->
+				if (volume.name!="root") {
+					def datastore = morpheusContext.services.cloud.datastore.get(volume.datastore.id)
+					datastore.datastoreType.code == this.code
+				}
+            }.collect { volume ->
+				new SnapshotFile(
+						name: "${server.name}-${volume.name}-${Instant.now().toEpochMilli()}",
+						volume: volume
+				)
+            }
+
+			// Using root volumes as shared volumes only for testing purposes
+			instanceSnapshot.snapshotFiles = server.volumes.findAll { volume ->
+				if (volume.name=="root") {
+					def datastore = morpheusContext.services.cloud.datastore.get(volume.datastore.id)
+					datastore.datastoreType.code == this.code
+				}
+			}.collect { volume ->
+				new SnapshotFile(
+						name: "${instance.name}-${volume.name}-${Instant.now().toEpochMilli()}",
+						volume: volume
+				)
+			}
+
+			instanceSnapshot.snapshots << serverSnapshot
+        }
+        return ServiceResponse.success(instanceSnapshot)
+    }
+
+	@Override
+	ServiceResponse<Snapshot> revertSnapshot(Instance instance, Snapshot snapshot) {
+		log.info("Reverting an instance snapshot")
+		return ServiceResponse.success(snapshot)
+	}
+
+	@Override
+	ServiceResponse removeSnapshot(Instance instance, Snapshot snapshot) {
+		log.info("Removing an instance snapshot")
 		return ServiceResponse.success()
 	}
 }
