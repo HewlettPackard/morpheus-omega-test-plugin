@@ -219,7 +219,8 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	ServiceResponse<StorageVolume> deleteVolume(StorageGroup storageGroup, StorageVolume storageVolume, Map opts) {
 		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
 		log.info("Options: ${opts?.dump()}")
-		morpheusContext.services.storage.volume.remove(storageVolume)
+		// Core takes care of the deletion from the DB for us and this would be the place to deal with deletion on the remote storage
+		// morpheusContext.services.storage.volume.remove(storageVolume)
 		return ServiceResponse.success(storageVolume)
 	}
 
@@ -227,7 +228,8 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	ServiceResponse<StorageVolume> deleteVolume(StorageServer storageServer, StorageVolume storageVolume, Map opts) {
 		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
 		log.info("Options: ${opts?.dump()}")
-		morpheusContext.services.storage.volume.remove(storageVolume)
+		// Core takes care of the deletion from the DB for us and this would be the place to deal with deletion on the remote storage
+		// morpheusContext.services.storage.volume.remove(storageVolume)
 		return ServiceResponse.success(storageVolume)
 	}
 
