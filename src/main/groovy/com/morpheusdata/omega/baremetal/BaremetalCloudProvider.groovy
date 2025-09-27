@@ -274,7 +274,24 @@ class BaremetalCloudProvider implements CloudProvider {
 												global: false,
 												custom: false,
 												helpText: "Indicates if this server is already provisioned with an OS. Allows for convert to managed.",
-										)
+										),
+										new OptionType(
+												name: 'num-nics',
+												code: 'omega.baremetal.provision.num-nic',
+												category: 'omega.baremetal.provision',
+												inputType: OptionType.InputType.NUMBER,
+												fieldName: 'numNics',
+												fieldContext: 'config',
+												fieldLabel: 'Number of NICs',
+												fieldGroup: 'advanced',
+												displayOrder: 1,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+												defaultValue: 4,
+										),
 						]
 				)
 		]

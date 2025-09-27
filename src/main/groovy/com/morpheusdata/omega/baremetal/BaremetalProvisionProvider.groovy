@@ -622,7 +622,8 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		context.services.computeServer.save(server)
 
 		def netInterfaces = []
-		2.times { idx ->
+		def numNics = Long.valueOf(server.configMap.numNics)
+		numNics.times { idx ->
 			def prefix = "ca:fe:fe" // Common prefix for generated MACs
 			def suffix = (0..2).collect {
 				String.format("%02x", new Random().nextInt(256))
