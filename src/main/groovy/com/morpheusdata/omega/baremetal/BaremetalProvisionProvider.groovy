@@ -28,9 +28,11 @@ import com.morpheusdata.model.Workload
 import com.morpheusdata.model.provisioning.HostRequest
 import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
-import com.morpheusdata.request.ConvertToManagedRequest
+import com.morpheusdata.request.AfterConvertToManagedRequest
+import com.morpheusdata.request.BeforeConvertToManagedRequest
 import com.morpheusdata.request.ResizeRequest
-import com.morpheusdata.response.ConvertToManagedResponse
+import com.morpheusdata.response.AfterConvertToManagedResponse
+import com.morpheusdata.response.BeforeConvertToManagedResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
@@ -715,9 +717,24 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 * {@inheritDoc}
 	 */
 	@Override
-	ServiceResponse<ConvertToManagedResponse> convertToManaged(ConvertToManagedRequest convertToManagedRequest) {
-		log.info("Convert to managed called")
-		return ServiceResponse.success(new ConvertToManagedResponse())
+	ServiceResponse<BeforeConvertToManagedResponse> beforeConvertToManaged(BeforeConvertToManagedRequest beforeConvertToManagedRequest) {
+		return ServiceResponse.success(new BeforeConvertToManagedResponse(
+				server: beforeConvertToManagedRequest.server,
+				opts: [alley: 'oop']
+		))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<AfterConvertToManagedResponse> afterConvertToManaged(AfterConvertToManagedRequest afterConvertToManagedRequest) {
+		log.info("alley-${afterConvertToManagedRequest.opts?.alley}")
+		return ServiceResponse.success(new AfterConvertToManagedResponse(
+				instance: afterConvertToManagedRequest.instance,
+				workloads: afterConvertToManagedRequest.workloads,
+				server: afterConvertToManagedRequest.server,
+		))
 	}
 
 	/**
