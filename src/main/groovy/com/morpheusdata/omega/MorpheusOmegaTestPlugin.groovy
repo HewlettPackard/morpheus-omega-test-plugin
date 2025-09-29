@@ -15,6 +15,7 @@
 */
 package com.morpheusdata.omega
 
+import com.morpheusdata.omega.datasets.CollectionDatasetProvider
 import com.morpheusdata.omega.addon.AddonPackageTestClusterTabProvider
 import com.morpheusdata.omega.addon.AddonPackageTypeProvider
 import com.morpheusdata.omega.baremetal.BaremetalCloudProvider
@@ -59,6 +60,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new EventGlobalSubscribingProvider(this,this.morpheus))
 		this.registerProvider(new EventClusterSubscribingIntegration(this,this.morpheus))
+
+		this.registerProvider(new CollectionDatasetProvider(this, this.morpheus))
 	}
 
 	/**
