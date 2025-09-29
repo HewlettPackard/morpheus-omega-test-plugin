@@ -302,6 +302,54 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 						wrapperClass: null,
 						inputType: OptionType.InputType.NUMBER,
 						minVal: 1
+				),
+				new OptionType(
+						name: 'sharedVolume',
+						code: 'omega.sstp.block.shared-volume',
+						fieldLabel: 'Shared Volume',
+						fieldName: 'sharedVolume',
+						inputType: OptionType.InputType.CHECKBOX,
+						displayOrder: 4,
+						editable: true,
+						config: JsonOutput.toJson(
+								[
+									resizable: true,
+								]
+						).toString(),
+				),
+				new OptionType(
+						name: "computeServer",
+						code: 'omega.sstp.block.computeserver',
+						fieldLabel: 'Compute Server',
+						fieldName:'computeServer',
+						inputType: OptionType.InputType.SELECT,
+						displayOrder: 5,
+						optionSourceType: 'example',
+						optionSource: 'collectionDatasetExample',
+						dependsOnCode: 'config.sharedVolume',
+						visibleOnCode: 'config.sharedVolume:off',
+						config: JsonOutput.toJson(
+								[
+									resizable: true,
+								]
+						).toString(),
+				),
+				new OptionType(
+						name: "BMaaS Instances",
+						code: 'omega.sstp.block.instances',
+						fieldLabel: 'Instances',
+						fieldName: 'instances',
+						inputType: OptionType.InputType.MULTI_SELECT,
+						displayOrder: 6,
+						optionSourceType: 'example',
+						optionSource: 'collectionDatasetExample',
+						dependsOnCode: 'config.sharedVolume',
+						visibleOnCode: 'config.sharedVolume:on',
+						config: JsonOutput.toJson(
+								[
+									resizable: true,
+								]
+						).toString(),
 				)
 			]
 		)
