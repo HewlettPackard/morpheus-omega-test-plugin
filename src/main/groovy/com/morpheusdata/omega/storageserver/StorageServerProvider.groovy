@@ -328,6 +328,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 						optionSource: 'collectionDatasetExample',
 						dependsOnCode: 'config.sharedVolume',
 						visibleOnCode: 'config.sharedVolume:off',
+						editable: true,
 						config: JsonOutput.toJson(
 								[
 									resizable: true,
@@ -345,6 +346,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 						optionSource: 'collectionDatasetExample',
 						dependsOnCode: 'config.sharedVolume',
 						visibleOnCode: 'config.sharedVolume:on',
+						editable: true,
 						config: JsonOutput.toJson(
 								[
 									resizable: true,
