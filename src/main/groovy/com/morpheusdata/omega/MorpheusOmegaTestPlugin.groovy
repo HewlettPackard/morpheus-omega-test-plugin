@@ -26,7 +26,7 @@ import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
-
+import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 
@@ -59,6 +59,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new EventGlobalSubscribingProvider(this,this.morpheus))
 		this.registerProvider(new EventClusterSubscribingIntegration(this,this.morpheus))
+		this.registerProvider(new OmegaStorageVolumeDetailProvider(this, this.morpheus))
 	}
 
 	/**
