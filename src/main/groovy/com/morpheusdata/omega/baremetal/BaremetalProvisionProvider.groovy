@@ -30,11 +30,13 @@ import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
 import com.morpheusdata.request.BeforeConvertToManagedRequest
-import com.morpheusdata.request.ResizeRequest
+import com.morpheusdata.request.ResizeV2Request
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
+import com.morpheusdata.response.PrepareResizeV2WorkloadResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
+import com.morpheusdata.response.ResizeV2WorkloadResponse
 import com.morpheusdata.response.ServiceResponse
 import com.morpheusdata.response.ValidateResizeV2WorkloadResponse
 import groovy.util.logging.Slf4j
@@ -468,41 +470,46 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		return true
 	}
 
-	/**
+	@Override
+	ServiceResponse<PrepareResizeV2WorkloadResponse> prepareResizeWorkload(Instance instance, Workload workload, ResizeV2Request resizeRequest, Map opts) {
+		log.info("prepare resize called")
+		return ServiceResponse.success(new PrepareResizeV2WorkloadResponse())
+	}
+/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	ServiceResponse resizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+	ServiceResponse<ResizeV2WorkloadResponse> resizeWorkload(Instance instance, Workload workload, ResizeV2Request resizeRequest, Map opts) {
 		log.info("resize called")
 		resizeRequest.interfacesAdd.each {
-			def csi = context.services.computeServer.computeServerInterface.get(it.id)
-			if (it?.networkConfiguration?.ipAddress) {
-				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.networkConfiguration.ipAddress)
+			def csi = it.existingModel
+			if (it.updateProps?.networkConfiguration?.ipAddress) {
+				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration.ipAddress)
 			}
-			csi.vlanId = it?.networkConfiguration?.vlan
+			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
 			context.services.computeServer.computeServerInterface.save([csi])
 		}
 
 		resizeRequest.interfacesUpdate.each {
-			def csi = context.services.computeServer.computeServerInterface.get(it.existingModel.id)
+			def csi = it.existingModel
 			if (it.updateProps?.networkConfiguration?.ipAddress) {
 				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration?.ipAddress)
 			}
 			if (!it.updateProps?.network) {
 				csi.network = null
 			}
-			csi.vlanId = it.updateProps.networkConfiguration?.vlan
+			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
 			context.services.computeServer.computeServerInterface.save([csi])
 		}
 
-		return ServiceResponse.success()
+		return ServiceResponse.success(new ResizeV2Request())
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	ServiceResponse<ValidateResizeV2WorkloadResponse> validateResizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+	ServiceResponse<ValidateResizeV2WorkloadResponse> validateResizeWorkload(Instance instance, Workload workload, ResizeV2Request resizeRequest, Map opts) {
 		log.info("validate resize called")
 		return ServiceResponse.success(new ValidateResizeV2WorkloadResponse(allowed: true, hotResize: false))
 	}
