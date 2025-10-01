@@ -1,14 +1,19 @@
 package com.morpheusdata.omega.baremetal
 
+import com.morpheusdata.PrepareHostResponse
 import com.morpheusdata.core.AbstractProvisionProvider
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.ProvisionInstanceServers
 import com.morpheusdata.core.data.DataFilter
 import com.morpheusdata.core.data.DataQuery
+import com.morpheusdata.core.data.NullDataFilter
+import com.morpheusdata.core.providers.HostProvisionProvider
 import com.morpheusdata.core.providers.ProvisionProvider
 import com.morpheusdata.core.providers.WorkloadProvisionProvider
+import com.morpheusdata.model.ComputeDevice
 import com.morpheusdata.model.ComputeServer
+import com.morpheusdata.model.ComputeServerInterface
 import com.morpheusdata.model.ComputeServerInterfaceType
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.Instance
@@ -20,13 +25,18 @@ import com.morpheusdata.model.Snapshot
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
+import com.morpheusdata.model.provisioning.HostRequest
 import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
+import com.morpheusdata.request.AfterConvertToManagedRequest
+import com.morpheusdata.request.BeforeConvertToManagedRequest
+import com.morpheusdata.request.CreateSnapshotRequest
 import com.morpheusdata.request.ResizeRequest
+import com.morpheusdata.response.AfterConvertToManagedResponse
+import com.morpheusdata.response.BeforeConvertToManagedResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
-import com.morpheusdata.request.CreateSnapshotRequest
 import com.morpheusdata.response.ValidateResizeWorkloadResponse
 import groovy.util.logging.Slf4j
 
@@ -35,7 +45,10 @@ import groovy.util.logging.Slf4j
  * state.
  */
 @Slf4j
-class BaremetalProvisionProvider extends AbstractProvisionProvider implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet, WorkloadProvisionProvider.ResizeFacet, ProvisionProvider.SnapshotFacet {
+class BaremetalProvisionProvider extends AbstractProvisionProvider
+		implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet,
+				WorkloadProvisionProvider.ResizeFacet, HostProvisionProvider, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
+				ProvisionProvider.ConvertToManagedFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"
@@ -480,9 +493,252 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 	@Override
 	Boolean canReconfigureNetwork() { true }
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	Boolean hasInstanceSnapshots() {
 		true
+	}
+
+	@Override
+	ServiceResponse createSnapshot(ComputeServer server, Map opts) {
+		log.info("Create snapshot request")
+		def resp = context.services.storage.datastoreType.createSnapshot(server, false, opts.forExport as Boolean)
+		if (resp.success) {
+			def snapshot = resp.data
+			snapshot = snapshot.tap {
+				it.name = opts.snapshotName
+				it.description = opts.description
+				it.externalId = "${server.externalId}-${new Date().time}"
+				it.cloud =  server.cloud
+				it.server = server
+				it.account = server.account
+				it.currentlyActive = true
+			}
+			def files = snapshot.snapshotFiles
+			def createdSnapshot = context.services.snapshot.create(snapshot)
+
+			files.each {
+				it.snapshot = createdSnapshot
+				context.services.snapshot.file.create(it)
+			}
+		}
+		return resp
+	}
+
+	@Override
+	ServiceResponse deleteSnapshots(ComputeServer server, Map opts) {
+		log.info("Delete snapshots request")
+		def snapshots = server.snapshots.collect { context.services.snapshot.get(it.id) }
+		snapshots.each {
+			context.services.storage.datastoreType.removeSnapshot(server, it)
+			context.services.snapshot.remove(it)
+		}
+		return ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse revertSnapshot(ComputeServer server, Snapshot snapshot, Map opts) {
+		log.info("Revert snapshot request")
+		// shut down servers
+		stopServer(server)
+		context.services.storage.datastoreType.revertSnapshot(server, snapshot)
+		snapshot.currentlyActive = true
+		context.services.snapshot.save(snapshot)
+		startServer(server)
+		return ServiceResponse.success()
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse validateHost(ComputeServer server, Map opts) {
+		return ServiceResponse.success()
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<PrepareHostResponse> prepareHost(ComputeServer server, HostRequest hostRequest, Map opts) {
+		return ServiceResponse.success(new PrepareHostResponse(
+				computeServer: server,
+				options: opts
+		))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<ProvisionResponse> runHost(ComputeServer server, HostRequest hostRequest, Map opts) {
+		return ServiceResponse.success(new ProvisionResponse(installAgent: false, noAgent: true))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<ProvisionResponse> waitForHost(ComputeServer server) {
+		return ServiceResponse.success(new ProvisionResponse(skipNetworkWait: true, installAgent: false, noAgent: true))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * We need to pretend we have physical hardware on this server.
+	 */
+	@Override
+	ServiceResponse finalizeHost(ComputeServer server) {
+		if (server.configMap?.preProvisioned) {
+			server.status = 'provisioned'
+			server.preProvisioned = true
+		} else {
+			server.status = 'available'
+		}
+		// Add wwpns so we can interact with alletra plugin for FC
+		server.setConfigProperty("wwpns", [
+				'BE:EF:CA:FE:' + (0..3).collect {
+					String.format("%02X", new Random().nextInt(256))
+				}.join(":")
+		])
+
+		// Add iqns so we can interact with alletra plugin for iscsi
+		server.setConfigProperty("iqns", [
+				"iqn.2016-04.com.hpe:${server.name}-${server.id}".toString(),
+		])
+
+		if (server.configMap?.consoleHost) {
+			server.consoleType = 'ilo'
+			server.consoleHost = server.configMap?.consoleHost
+			server.consoleUsername = server.configMap?.consoleUsername
+			server.consolePassword = server.configMap?.consolePassword
+		}
+		server.plan = context.services.servicePlan.find(new DataQuery().withFilter('code', 'omega.baremetal.any'))
+		context.services.computeServer.save(server)
+
+		def netInterfaces = []
+		def numNics = Long.valueOf(server.configMap.numNics)
+		numNics.times { idx ->
+			def prefix = "ca:fe:fe" // Common prefix for generated MACs
+			def suffix = (0..2).collect {
+				String.format("%02x", new Random().nextInt(256))
+			}.join(":")
+
+			def syntheticMacaddress = "${prefix}:${suffix}"
+			ComputeServerInterface nic = new ComputeServerInterface(
+					name: "eth${idx}",
+					type: new ComputeServerInterfaceType(code: BaremetalProvisionProvider.CSI_PHYS_CODE),
+					macAddress: syntheticMacaddress,
+					externalId: syntheticMacaddress,
+					dhcp: false,
+					primaryInterface: false,
+					ipMode: 'static',
+			)
+			def syntheticIpAddr= (0..3).collect {
+				String.format("%d", new Random().nextInt(256))
+			}.join(".")
+			nic.addresses << new NetAddress(address: syntheticIpAddr, type: NetAddress.AddressType.IPV4)
+
+			netInterfaces << nic
+		}
+
+		context.async.computeServer.computeServerInterface.create(netInterfaces, server).blockingGet()
+		server = context.services.computeServer.get(server.id)
+
+		// Pretend we discovered some devices on this server.
+		def discoveredDevices = [
+				[ name: "Generic USB", vendorId: 1, productId: 1, type: 'usb_device', domain: 0000, bus: 00, device: 14, function: 0, iommuGroup: 0 ], // generic usb
+				[ name: "Generic PCI", vendorId: 1, productId: 1, type: 'pci', domain: 0000, bus: 0x0e, device: 01, function: 0, iommuGroup: 0 ], // generic pci
+				[ name: "Nvidia Generic GPU", vendorId: 4318, type: 'pci', domain: 0000, bus: 0x0e, device: 02, function: 0, iommuGroup: 0 ], // Nvidia Generic GPU
+				[ name: "Nvidia GeForce RTX 4090", vendorId: 4318, productId: 9860, type: 'pci', domain: 0000, bus: 0x0e, device: 13, function: 0, iommuGroup: 0 ], // Nvidia GeForce RTX 4090
+				[ name: "Omega Baremetal GPU", vendorId: 1337, productId: 1337, type: 'pci', domain: 0000, bus: 0x0e, device: 14, function: 0, iommuGroup: 0 ], // Fake device type that doesn't really exist
+		]
+
+		for (def discoveredDevice in discoveredDevices) {
+			// check if we know the exact type of the device by vendorId and productId
+			def type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilters(
+					new DataFilter('vendorId', discoveredDevice.vendorId),
+					new DataFilter('productId', discoveredDevice.productId),
+			))
+
+			if(!type) {
+				// well maybe we know who made it at least and we can pick a generic type for that vendor
+				type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilters(
+						new DataFilter('vendorId', discoveredDevice.vendorId),
+						new NullDataFilter<>('productId'), // we want the generic type for this vendor, there shouldn't be a productId
+						new DataFilter('bus_type', discoveredDevice.type), // pci or usb_device
+				))
+			}
+
+			if(!type) {
+				// if we don't know the type by vendorId and productId but we know what kind of device it is, pick the generic
+				if (discoveredDevice.type == 'usb_device') {
+					type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilter(
+							new DataFilter('code', 'usb'),
+					))
+				} else if (discoveredDevice.type == 'pci') {
+					type = context.services.computeServer.computeDevice.type.find(new DataQuery().withFilter(
+							new DataFilter('code', 'pci'),
+					))
+				}
+			}
+
+			if (!type) {
+				log.warn("Could not find a compute device type for vendorId: ${discoveredDevice.vendorId}, productId: ${discoveredDevice.productId}, type: ${discoveredDevice.type}")
+				return
+			}
+
+			def computeDevice = new ComputeDevice(
+					name: discoveredDevice.name,
+					vendorId: discoveredDevice.vendorId,
+					productId: discoveredDevice.productId,
+					type: type,
+					domainId: discoveredDevice.domain,
+					bus: discoveredDevice.bus,
+					device: discoveredDevice.device,
+					functionId: discoveredDevice.function,
+					iommuGroup: discoveredDevice.iommuGroup,
+					server: server, // you must have a server attached.
+			)
+			context.services.computeServer.computeDevice.create(computeDevice)
+		}
+
+		return ServiceResponse.success()
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<BeforeConvertToManagedResponse> beforeConvertToManaged(BeforeConvertToManagedRequest beforeConvertToManagedRequest) {
+		return ServiceResponse.success(new BeforeConvertToManagedResponse(
+				server: beforeConvertToManagedRequest.server,
+				opts: [alley: 'oop']
+		))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ServiceResponse<AfterConvertToManagedResponse> afterConvertToManaged(AfterConvertToManagedRequest afterConvertToManagedRequest) {
+		log.info("alley-${afterConvertToManagedRequest.opts?.alley}")
+		return ServiceResponse.success(new AfterConvertToManagedResponse(
+				instance: afterConvertToManagedRequest.instance,
+				workloads: afterConvertToManagedRequest.workloads,
+				server: afterConvertToManagedRequest.server,
+		))
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Boolean supportsAddPreprovisionedServer() {
+		return true
 	}
 
 	@Override
@@ -554,14 +810,22 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider implements Wo
 
 	@Override
 	ServiceResponse deleteSnapshot(Snapshot snapshot, Map opts) {
-		log.info("Delete instance snapshot request")
-		if (!opts.instanceId) {
-			return ServiceResponse.error("Unable to delete instance snapshot, no instance id provided")
+		log.info("Delete snapshot request")
+		if ((!opts.serverId) && (!opts.instanceId)) {
+			return ServiceResponse.error("Unable to delete snapshot, no server id or instance id provided")
 		}
 
-		Instance instance = context.services.instance.get(Long.valueOf(opts.instanceId))
-		context.services.storage.datastoreType.removeSnapshot(instance, snapshot)
-		context.services.snapshot.remove(snapshot)
+		if (opts.instanceId) {
+			Instance instance = context.services.instance.get(Long.valueOf(opts.instanceId))
+			context.services.storage.datastoreType.removeSnapshot(instance, snapshot)
+			context.services.snapshot.remove(snapshot)
+
+		} else if (opts.serverId) {
+			ComputeServer server = context.services.computeServer.get(Long.valueOf(opts.serverId))
+			context.services.storage.datastoreType.removeSnapshot(server, snapshot)
+			context.services.snapshot.remove(snapshot)
+		}
+
 		return ServiceResponse.success()
 	}
 

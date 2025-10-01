@@ -92,6 +92,7 @@ resource "instance-type-layout" "omega-baremetal-1_0-single" {
   actions         = ["generic-add-node"]
   optionTypes     = []
   provisionType   = "omega.baremetal.provision"
+  supportsConvertToManaged = true
 }
 
 resource "scale-action" "omega-baremetal-1_0-single" {

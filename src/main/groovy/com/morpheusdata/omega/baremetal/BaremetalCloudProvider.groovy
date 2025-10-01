@@ -128,7 +128,6 @@ class BaremetalCloudProvider implements CloudProvider {
 	Collection<ProvisionProvider> getAvailableProvisionProviders() {
 		return (this.@plugin.getProvidersByType(ProvisionProvider) as Collection<ProvisionProvider>).findAll{
 			it.code in [
-					BaremetalManualProvisionProvider.PROVISION_PROVIDER_CODE,
 					BaremetalProvisionProvider.PROVISION_PROVIDER_CODE,
 			]
 		}
@@ -208,7 +207,7 @@ class BaremetalCloudProvider implements CloudProvider {
 						managed: false,
 						name: 'Omega Baremetal Stub Server',
 						platform: PlatformType.none,
-						provisionTypeCode: 'omega.baremetal.manual-provision',
+						provisionTypeCode: 'omega.baremetal.provision',
 						selectable: false,
 						supportsConsoleKeymap: true,
 						vmHypervisor: false,
@@ -217,7 +216,7 @@ class BaremetalCloudProvider implements CloudProvider {
 						optionTypes: [
 										new OptionType(
 												name: 'iLO Server IP',
-												code: 'omega.baremetal.manual-provision.ilo-server-ip',
+												code: 'omega.baremetal.provision.ilo-server-ip',
 												category: 'omega.baremetal.manual-provision',
 												inputType: OptionType.InputType.TEXT,
 												fieldName: 'consoleHost',
@@ -232,8 +231,8 @@ class BaremetalCloudProvider implements CloudProvider {
 										),
 										new OptionType(
 												name: 'iLO Server IP',
-												code: 'omega.baremetal.manual-provision.ilo-server-name',
-												category: 'omega.baremetal.manual-provision',
+												code: 'omega.baremetal.provision.ilo-server-name',
+												category: 'omega.baremetal.provision',
 												inputType: OptionType.InputType.TEXT,
 												fieldName: 'consoleUsername',
 												fieldContext: 'config',
@@ -247,8 +246,8 @@ class BaremetalCloudProvider implements CloudProvider {
 										),
 										new OptionType(
 												name: 'iLO Server Password',
-												code: 'omega.baremetal.manual-provision.ilo-server-password',
-												category: 'omega.baremetal.manual-provision',
+												code: 'omega.baremetal.provision.ilo-server-password',
+												category: 'omega.baremetal.provision',
 												inputType: OptionType.InputType.PASSWORD,
 												fieldName: 'consolePassword',
 												fieldContext: 'config',
@@ -259,7 +258,40 @@ class BaremetalCloudProvider implements CloudProvider {
 												editable: false,
 												global: false,
 												custom: false,
-										)
+										),
+										new OptionType(
+												name: 'Pre-provisioned',
+												code: 'omega.baremetal.provision.pre-provisioned',
+												category: 'omega.baremetal.provision',
+												inputType: OptionType.InputType.CHECKBOX,
+												fieldName: 'preProvisioned',
+												fieldContext: 'config',
+												fieldLabel: 'Pre-provisioned',
+												displayOrder: 4,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+												helpText: "Indicates if this server is already provisioned with an OS. Allows for convert to managed.",
+										),
+										new OptionType(
+												name: 'num-nics',
+												code: 'omega.baremetal.provision.num-nic',
+												category: 'omega.baremetal.provision',
+												inputType: OptionType.InputType.NUMBER,
+												fieldName: 'numNics',
+												fieldContext: 'config',
+												fieldLabel: 'Number of NICs',
+												fieldGroup: 'advanced',
+												displayOrder: 1,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+												defaultValue: 4,
+										),
 						]
 				)
 		]
@@ -449,6 +481,11 @@ class BaremetalCloudProvider implements CloudProvider {
 	@Override
 	Boolean canCreateDatastores() {
 		return true
+	}
+
+	@Override
+	Boolean hasSecurityGroups() {
+		return false
 	}
 }
 
