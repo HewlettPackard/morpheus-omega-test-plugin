@@ -30,13 +30,13 @@ import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
 import com.morpheusdata.request.BeforeConvertToManagedRequest
-import com.morpheusdata.request.CreateSnapshotRequest
 import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
+import com.morpheusdata.request.CreateSnapshotRequest
 import com.morpheusdata.response.ValidateResizeWorkloadResponse
 import groovy.util.logging.Slf4j
 
