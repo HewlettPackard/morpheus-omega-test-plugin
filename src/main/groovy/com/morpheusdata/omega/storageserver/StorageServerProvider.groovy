@@ -259,6 +259,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 			configurableIOPS: true,
 			minIOPS: 1000,
 			maxIOPS: 100000,
+			multiAttachSupported: true,
 			optionTypes: [
 				new OptionType(
 					code: 'omega.sstp.block.provisionType',

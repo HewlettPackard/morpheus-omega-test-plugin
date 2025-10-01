@@ -3,6 +3,7 @@ package com.morpheusdata.omega.datastore
 import com.bertramlabs.plugins.karman.CloudFileInterface
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
+import com.morpheusdata.core.data.DataQuery
 import com.morpheusdata.core.providers.DatastoreTypeProvider
 import com.morpheusdata.model.*
 import com.morpheusdata.omega.storageserver.StorageServerProvider
@@ -16,7 +17,7 @@ import java.time.Instant
  * An example datastore provider
  */
 @Slf4j
-class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.SnapshotFacet.SnapshotServerFacet, DatastoreTypeProvider.SnapshotFacet.SnapshotInstanceFacet {
+class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.SnapshotFacet.SnapshotServerFacet, DatastoreTypeProvider.SnapshotFacet.SnapshotInstanceFacet, DatastoreTypeProvider.ComputeProvisionFacet {
 	public static final String PROVIDER_CODE = "omega.datastore"
 
 	private final Plugin plugin
@@ -171,6 +172,23 @@ class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.
 	ServiceResponse removeSnapshot(ComputeServer server, Snapshot snapshot) {
 		log.info("Removing a snapshot")
 		return ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse<StorageVolume> prepareServerForVolume(ComputeServer server, StorageVolume volume) {
+		log.info("Preparing server for volume")
+		return ServiceResponse.success(volume)
+	}
+
+	@Override
+	ServiceResponse<StorageVolume> releaseVolumeFromServer(ComputeServer server, StorageVolume volume) {
+		log.info("Releasing volume from server")
+		return ServiceResponse.success(volume)
+	}
+
+	@Override
+	List<StorageVolumeType> getVolumeTypes() {
+		return [morpheusContext.services.storage.volume.storageVolumeType.find(new DataQuery().withFilter('code', 'omega.sstp.block'))]
 	}
 
     @Override
