@@ -37,7 +37,7 @@ import com.morpheusdata.response.BeforeConvertToManagedResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ServiceResponse
-import com.morpheusdata.response.ValidateResizeWorkloadResponse
+import com.morpheusdata.response.ValidateResizeV2WorkloadResponse
 import groovy.util.logging.Slf4j
 
 /**
@@ -47,7 +47,7 @@ import groovy.util.logging.Slf4j
 @Slf4j
 class BaremetalProvisionProvider extends AbstractProvisionProvider
 		implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet,
-				WorkloadProvisionProvider.ResizeFacet, HostProvisionProvider, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
+				WorkloadProvisionProvider.ResizeV2Facet, HostProvisionProvider, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
 				ProvisionProvider.ConvertToManagedFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
@@ -475,6 +475,27 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	ServiceResponse resizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
 		log.info("resize called")
+		resizeRequest.interfacesAdd.each {
+			def csi = context.services.computeServer.computeServerInterface.get(it.id)
+			if (it?.networkConfiguration?.ipAddress) {
+				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.networkConfiguration.ipAddress)
+			}
+			csi.vlanId = it?.networkConfiguration?.vlan
+			context.services.computeServer.computeServerInterface.save([csi])
+		}
+
+		resizeRequest.interfacesUpdate.each {
+			def csi = context.services.computeServer.computeServerInterface.get(it.existingModel.id)
+			if (it.updateProps?.networkConfiguration?.ipAddress) {
+				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration?.ipAddress)
+			}
+			if (!it.updateProps?.network) {
+				csi.network = null
+			}
+			csi.vlanId = it.updateProps.networkConfiguration?.vlan
+			context.services.computeServer.computeServerInterface.save([csi])
+		}
+
 		return ServiceResponse.success()
 	}
 
@@ -482,9 +503,9 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 * {@inheritDoc}
 	 */
 	@Override
-	ServiceResponse<ValidateResizeWorkloadResponse> validateResizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
+	ServiceResponse<ValidateResizeV2WorkloadResponse> validateResizeWorkload(Instance instance, Workload workload, ResizeRequest resizeRequest, Map opts) {
 		log.info("validate resize called")
-		return ServiceResponse.success(new ValidateResizeWorkloadResponse(allowed: true, hotResize: false))
+		return ServiceResponse.success(new ValidateResizeV2WorkloadResponse(allowed: true, hotResize: false))
 	}
 
 	/**
