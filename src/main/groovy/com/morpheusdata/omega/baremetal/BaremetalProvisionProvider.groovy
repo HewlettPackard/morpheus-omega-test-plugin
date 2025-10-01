@@ -30,6 +30,7 @@ import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
 import com.morpheusdata.request.BeforeConvertToManagedRequest
+import com.morpheusdata.request.CreateSnapshotRequest
 import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
@@ -492,6 +493,14 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	Boolean canReconfigureNetwork() { true }
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	Boolean hasInstanceSnapshots() {
+		true
+	}
+
 	@Override
 	ServiceResponse createSnapshot(ComputeServer server, Map opts) {
 		log.info("Create snapshot request")
@@ -526,19 +535,6 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 			context.services.storage.datastoreType.removeSnapshot(server, it)
 			context.services.snapshot.remove(it)
 		}
-		return ServiceResponse.success()
-	}
-
-	@Override
-	ServiceResponse deleteSnapshot(Snapshot snapshot, Map opts) {
-		log.info("Delete snapshot request")
-		if (!opts.serverId) {
-			return ServiceResponse.error("Unable to delete snapshot, no server id provided")
-		}
-
-		ComputeServer server = context.services.computeServer.get(Long.valueOf(opts.serverId))
-		context.services.storage.datastoreType.removeSnapshot(server, snapshot)
-		context.services.snapshot.remove(snapshot)
 		return ServiceResponse.success()
 	}
 
@@ -743,5 +739,110 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	Boolean supportsAddPreprovisionedServer() {
 		return true
+	}
+
+	@Override
+	ServiceResponse createSnapshot(Instance instance, Map opts) {
+		log.info("Create instance snapshot request")
+		CreateSnapshotRequest req = new CreateSnapshotRequest(false, opts.forExport as Boolean)
+		def resp = context.services.storage.datastoreType.createSnapshot(instance, req)
+		if (resp.success) {
+			def instanceSnapshot = resp.data
+			instanceSnapshot = instanceSnapshot.tap {
+				it.name = opts.snapshotName
+				it.description = opts.description
+				it.externalId = "${instance.externalId}-${new Date().time}"
+				it.instance = instance
+				it.account = instance.account
+				it.currentlyActive = true
+			}
+
+			def files = instanceSnapshot.snapshotFiles
+			def createdInstanceSnapshot = context.services.snapshot.create(instanceSnapshot)
+
+			files.each {
+				it.snapshot = createdInstanceSnapshot
+				def createdFile =  context.services.snapshot.file.create(it)
+				createdInstanceSnapshot.snapshotFiles << createdFile
+			}
+
+			def serverSnapshotsCopy = new ArrayList<>(createdInstanceSnapshot.snapshots)
+			serverSnapshotsCopy.each { serverSnapshot ->
+				serverSnapshot.tap {
+					serverSnapshot.name = "${opts.snapshotName} - Server ${it.server.name}"
+					serverSnapshot.description = opts.description
+					serverSnapshot.externalId = "${instance.externalId}-${it.server.externalId}-${new Date().time}"
+					serverSnapshot.parentSnapshot = createdInstanceSnapshot
+					serverSnapshot.account = instance.account
+					serverSnapshot.currentlyActive = true
+				}
+
+				files = serverSnapshot.snapshotFiles
+				def createdServerSnapshot = context.services.snapshot.create(serverSnapshot)
+				files.each {
+					it.snapshot = createdServerSnapshot
+					createdServerSnapshot.snapshotFiles << context.services.snapshot.file.create(it)
+				}
+
+				createdInstanceSnapshot.snapshots << createdServerSnapshot
+			}
+
+			createdInstanceSnapshot = context.services.snapshot.save(createdInstanceSnapshot)
+
+
+			instance.snapshots << createdInstanceSnapshot
+			context.services.instance.save(instance)
+		}
+
+		resp
+	}
+
+	@Override
+	ServiceResponse deleteSnapshots(Instance instance, Map opts) {
+		log.info("Delete instance snapshots request")
+		def snapshots = instance.snapshots.collect { context.services.snapshot.get(it.id) }
+		snapshots.each {
+			context.services.storage.datastoreType.removeSnapshot(instance, it)
+			context.services.snapshot.remove(it)
+		}
+		return ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse deleteSnapshot(Snapshot snapshot, Map opts) {
+		log.info("Delete snapshot request")
+		if ((!opts.serverId) && (!opts.instanceId)) {
+			return ServiceResponse.error("Unable to delete snapshot, no server id or instance id provided")
+		}
+
+		if (opts.instanceId) {
+			Instance instance = context.services.instance.get(Long.valueOf(opts.instanceId))
+			context.services.storage.datastoreType.removeSnapshot(instance, snapshot)
+			context.services.snapshot.remove(snapshot)
+
+		} else if (opts.serverId) {
+			ComputeServer server = context.services.computeServer.get(Long.valueOf(opts.serverId))
+			context.services.storage.datastoreType.removeSnapshot(server, snapshot)
+			context.services.snapshot.remove(snapshot)
+		}
+
+		return ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse revertSnapshot(Instance instance, Snapshot snapshot, Map opts) {
+		log.info("Revert instance snapshot request")
+		// Stop each server in the instance
+		instance.containers.each { it ->
+			stopServer(it.server)
+		}
+
+		context.services.storage.datastoreType.revertSnapshot(instance, snapshot)
+		snapshot.currentlyActive = true
+		context.services.snapshot.save(snapshot)
+		instance.containers.each { it ->
+			startServer(it.server)
+		}
+		return ServiceResponse.success()
 	}
 }
