@@ -19,7 +19,6 @@ import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.providers.StorageVolumeResourceViewUIFacet
 import com.morpheusdata.model.*
-import com.morpheusdata.views.Renderer
 import groovy.util.logging.Slf4j
 
 /**
@@ -75,16 +74,6 @@ class OmegaStorageVolumeDetailProvider implements StorageVolumeResourceViewUIFac
 	@Override
 	String getName() {
 		return 'Omega Storage Volume Details Provider'
-	}
-
-	/**
-	 * Returns the renderer for this provider. Since we only return data (not render templates),
-	 * we return null as this is not needed for ResourceViewUIFacet implementations.
-	 * @return null as no rendering is required
-	 */
-	@Override
-	Renderer<?> getRenderer() {
-		return null
 	}
 
 	/**
