@@ -167,14 +167,15 @@ class OmegaStorageVolumeDetailProvider implements StorageVolumeResourceViewUIFac
 	 */
 	@Override
 	Boolean show(StorageVolume storageVolume, User user, Account account) {
-		// Show for all storage volumes for testing purposes
-		// In a real implementation, you might check:
-		// - Storage volume type
-		// - User permissions
-		// - Account settings
-		// - Cloud provider type
-		// - etc.
-		return true
+		// Only show for storage volumes created by the Omega storage provider
+		// Check if the storage volume type belongs to our Omega plugin
+		if (storageVolume?.type?.code?.startsWith('omega.sstp')) {
+			log.debug("Showing Omega storage details for volume: ${storageVolume.name} with type: ${storageVolume.type.code}")
+			return true
+		}
+
+		log.debug("Not showing Omega storage details for volume: ${storageVolume?.name} with type: ${storageVolume?.type?.code} (not an Omega volume)")
+		return false
 	}
 
 	// Helper methods to simulate getting custom information about storage volumes
