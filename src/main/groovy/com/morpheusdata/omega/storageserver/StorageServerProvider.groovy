@@ -257,7 +257,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 			minStorage: 1 * 1024 * 1024 * 1024, // 1 GB
 			maxStorage: 100 * 1024 * 1024 * 1024, // 100 GB
 			configurableIOPS: true,
-			minIOPS: 1000,
+			minIOPS: 10,
 			maxIOPS: 100000,
 			multiAttachSupported: true,
 			optionTypes: [
