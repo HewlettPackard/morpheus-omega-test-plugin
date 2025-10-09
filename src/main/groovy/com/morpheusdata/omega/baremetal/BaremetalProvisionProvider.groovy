@@ -561,7 +561,6 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		def snapshots = server.snapshots.collect { context.services.snapshot.get(it.id) }
 		snapshots.each {
 			context.services.storage.datastoreType.removeSnapshot(server, it)
-			context.services.snapshot.remove(it)
 		}
 		return ServiceResponse.success()
 	}
@@ -831,7 +830,6 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		def snapshots = instance.snapshots.collect { context.services.snapshot.get(it.id) }
 		snapshots.each {
 			context.services.storage.datastoreType.removeSnapshot(instance, it)
-			context.services.snapshot.remove(it)
 		}
 		return ServiceResponse.success()
 	}
@@ -846,12 +844,9 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		if (opts.instanceId) {
 			Instance instance = context.services.instance.get(Long.valueOf(opts.instanceId))
 			context.services.storage.datastoreType.removeSnapshot(instance, snapshot)
-			context.services.snapshot.remove(snapshot)
-
 		} else if (opts.serverId) {
 			ComputeServer server = context.services.computeServer.get(Long.valueOf(opts.serverId))
 			context.services.storage.datastoreType.removeSnapshot(server, snapshot)
-			context.services.snapshot.remove(snapshot)
 		}
 
 		return ServiceResponse.success()
