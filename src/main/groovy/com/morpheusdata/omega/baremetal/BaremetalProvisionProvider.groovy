@@ -243,7 +243,7 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		context.services.computeServer.computeServerInterface.bulkSave(workload.server.interfaces)
 
 		// Clear out the volume that was created as our 'root' volume during provisioning.
-		def rootVol  = workload.server.volumes.find { it.rootVolume }
+		def rootVol  = workload.server.volumes.find { it.rootVolume && !it.datastore }
 		if (rootVol) {
 			context.async.storageVolume.remove([rootVol], workload.server, true).blockingGet()
 			workload.server = context.services.computeServer.get(workload.server.id)
