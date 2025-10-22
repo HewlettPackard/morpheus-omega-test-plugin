@@ -31,6 +31,7 @@ import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
 import com.morpheusdata.request.BeforeConvertToManagedRequest
 import com.morpheusdata.request.CreateSnapshotRequest
+import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.request.ResizeV2Request
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
@@ -49,7 +50,7 @@ import groovy.util.logging.Slf4j
 @Slf4j
 class BaremetalProvisionProvider extends AbstractProvisionProvider
 		implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet,
-				WorkloadProvisionProvider.ResizeV2Facet, HostProvisionProvider, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
+				WorkloadProvisionProvider.ResizeV2Facet, HostProvisionProvider, HostProvisionProvider.ResizeV2Facet, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
 				ProvisionProvider.ConvertToManagedFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
@@ -481,29 +482,7 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 */
 	@Override
 	ServiceResponse<ResizeV2WorkloadResponse> resizeWorkload(Instance instance, Workload workload, ResizeV2Request resizeRequest, Map opts) {
-		log.info("resize called")
-		resizeRequest.interfacesAdd.each {
-			def csi = it.existingModel
-			if (it.updateProps?.networkConfiguration?.ipAddress) {
-				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration.ipAddress)
-			}
-			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
-			context.services.computeServer.computeServerInterface.save([csi])
-		}
-
-		resizeRequest.interfacesUpdate.each {
-			def csi = it.existingModel
-			if (it.updateProps?.networkConfiguration?.ipAddress) {
-				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration?.ipAddress)
-			}
-			if (!it.updateProps?.network) {
-				csi.network = null
-			}
-			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
-			context.services.computeServer.computeServerInterface.save([csi])
-		}
-
-		return ServiceResponse.success(new ResizeV2Request())
+		return resizeServer(workload.server, resizeRequest, opts)
 	}
 
 	/**
@@ -867,5 +846,53 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 			startServer(it.server)
 		}
 		return ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse<ValidateResizeV2WorkloadResponse> validateResizeServer(ComputeServer server, ResizeV2Request resizeRequest, Map opts) {
+		return ServiceResponse.success(new ValidateResizeV2WorkloadResponse(allowed:true, hotResize: true))
+	}
+
+	@Override
+	ServiceResponse<PrepareResizeV2WorkloadResponse> prepareResizeServer(ComputeServer server, ResizeV2Request resizeRequest, Map opts) {
+		return ServiceResponse.success(new PrepareResizeV2WorkloadResponse())
+	}
+
+	@Override
+	ServiceResponse<ResizeV2WorkloadResponse> resizeServer(ComputeServer server, ResizeV2Request resizeRequest, Map opts) {
+		log.info("resize called")
+		resizeRequest.interfacesAdd.each {
+			def csi = it.existingModel
+			if (it.updateProps?.networkConfiguration?.ipAddress) {
+				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration.ipAddress)
+			}
+			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
+			context.services.computeServer.computeServerInterface.save([csi])
+		}
+
+		resizeRequest.interfacesUpdate.each {
+			def csi = it.existingModel
+			if (it.updateProps?.networkConfiguration?.ipAddress) {
+				csi.addresses << new NetAddress(NetAddress.AddressType.IPV4, it.updateProps?.networkConfiguration?.ipAddress)
+			}
+			if (!it.updateProps?.network) {
+				csi.network = null
+			}
+			csi.vlanId = it.updateProps?.networkConfiguration?.vlan
+			context.services.computeServer.computeServerInterface.save([csi])
+		}
+
+		resizeRequest.volumesUpdate.each {
+			def volume = it.existingModel
+			if (volume.maxStorage != it.updateProps.maxStorage && volume.datastore) {
+				volume.maxStorage = it.updateProps.maxStorage
+				volume = context.services.storage.datastoreType.resizeVolume(volume, server, true)
+				context.services.storage.volume.save(volume)
+			}
+		}
+
+		return ServiceResponse.success(new ResizeV2WorkloadResponse(
+				preserveVolumes: true
+		))
 	}
 }
