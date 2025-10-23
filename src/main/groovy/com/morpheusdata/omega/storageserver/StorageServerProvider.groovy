@@ -177,6 +177,9 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	ServiceResponse<StorageVolume> createVolume(StorageServer storageServer, StorageVolume storageVolume, Map opts) {
 		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
 		log.info("Options: ${opts?.dump()}")
+        if(storageVolume.name == null || storageVolume.name.trim() == "") {
+            return ServiceResponse.create([success: false, message: "Volume name cannot be empty"])
+        }
 		storageVolume = morpheusContext.services.storage.volume.create(storageVolume)
 		return ServiceResponse.success(storageVolume);
 	}
@@ -211,6 +214,9 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 	ServiceResponse<StorageVolume> updateVolume(StorageServer storageServer, StorageVolume storageVolume, Map opts) {
 		log.info("Dump of param storageVolume: ${storageVolume?.dump()}")
 		log.info("Options: ${opts?.dump()}")
+        if(storageVolume.name == null || storageVolume.name.trim() == "") {
+            return ServiceResponse.create([success: false, message: "Volume name cannot be empty"])
+        }
 		storageVolume = morpheusContext.services.storage.volume.save(storageVolume)
 		return ServiceResponse.create([success: true, data: [storageVolume: storageVolume]])
 	}
