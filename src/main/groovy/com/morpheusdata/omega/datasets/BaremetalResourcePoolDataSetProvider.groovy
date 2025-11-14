@@ -13,7 +13,7 @@ import io.reactivex.rxjava3.core.Observable
 
 class BaremetalResourcePoolDataSetProvider extends AbstractDatasetProvider<CloudPool, String> {
     public static final PROVIDER_NAME = "Omega Baremetal Cloud Pool Provider"
-    public static final PROVIDER_NAMESPACE = "com.Omega.ilo"
+    public static final PROVIDER_NAMESPACE = "com.omega"
     public static final PROVIDER_KEY = "omega-cloud-pool"
     public static final PROVIDER_DESCRIPTION = "Omega Baremetal cloud pools"
 

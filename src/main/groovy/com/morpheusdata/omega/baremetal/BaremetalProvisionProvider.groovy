@@ -120,7 +120,7 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		def options = []
 		options << new OptionType(
 				name: "Baremetal Hosts",
-				code: 'provisionType.hpeilo.hosts',
+				code: 'provisionType.omega.hosts',
 				displayOrder: 20,
 				fieldContext: 'config',
 				fieldName: 'hosts',

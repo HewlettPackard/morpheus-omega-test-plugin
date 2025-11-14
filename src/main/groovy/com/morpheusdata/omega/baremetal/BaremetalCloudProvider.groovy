@@ -216,7 +216,7 @@ class BaremetalCloudProvider implements CloudProvider {
 						supportsDeviceAttachment: false, // This is the default but to make it clear, this is a baremetal server and can't attach/detach devices
 						optionTypes: [
 										new OptionType(
-												code: 'serverType.hpe-ilo.resourcePool',
+												code: 'serverType.omega.resourcePool',
 												inputType: OptionType.InputType.SELECT,
 												name: 'Resource Pool',
 												fieldName: 'resourcePoolId',

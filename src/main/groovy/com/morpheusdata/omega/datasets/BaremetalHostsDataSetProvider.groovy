@@ -15,7 +15,7 @@ import io.reactivex.rxjava3.core.Observable
 @Slf4j
 class BaremetalHostsDataSetProvider extends AbstractDatasetProvider<ComputeServer, String> {
     public static final PROVIDER_NAME = "Omega Baremetal Host Dataset Provider"
-    public static final PROVIDER_NAMESPACE = "com.omega.ilo"
+    public static final PROVIDER_NAMESPACE = "com.omega"
     public static final PROVIDER_KEY = "omega-baremetal-hosts"
     public static final PROVIDER_DESCRIPTION = "Omega Baremetal Hosts Dataset Provider"
 
