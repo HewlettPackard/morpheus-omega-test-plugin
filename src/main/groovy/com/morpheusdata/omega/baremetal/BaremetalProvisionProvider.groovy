@@ -10,6 +10,7 @@ import com.morpheusdata.core.data.DataQuery
 import com.morpheusdata.core.data.NullDataFilter
 import com.morpheusdata.core.providers.HostProvisionProvider
 import com.morpheusdata.core.providers.ProvisionProvider
+import com.morpheusdata.core.providers.ResourceProvisionProvider
 import com.morpheusdata.core.providers.WorkloadProvisionProvider
 import com.morpheusdata.model.ComputeDevice
 import com.morpheusdata.model.ComputeServer
@@ -26,6 +27,7 @@ import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
 import com.morpheusdata.model.provisioning.HostRequest
+import com.morpheusdata.model.provisioning.InstanceRequest
 import com.morpheusdata.model.provisioning.RemoveWorkloadRequest
 import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
@@ -35,12 +37,14 @@ import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.request.ResizeV2Request
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
+import com.morpheusdata.response.PrepareInstanceResponse
 import com.morpheusdata.response.PrepareResizeV2WorkloadResponse
 import com.morpheusdata.response.PrepareWorkloadResponse
 import com.morpheusdata.response.ProvisionResponse
 import com.morpheusdata.response.ResizeV2WorkloadResponse
 import com.morpheusdata.response.ServiceResponse
 import com.morpheusdata.response.ValidateResizeV2WorkloadResponse
+import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
 import groovy.util.logging.Slf4j
 
 /**
@@ -51,7 +55,7 @@ import groovy.util.logging.Slf4j
 class BaremetalProvisionProvider extends AbstractProvisionProvider
 		implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet,
 				WorkloadProvisionProvider.ResizeV2Facet, HostProvisionProvider, HostProvisionProvider.ResizeV2Facet, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
-				ProvisionProvider.ConvertToManagedFacet {
+				ProvisionProvider.ConvertToManagedFacet,ResourceProvisionProvider {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"
@@ -84,10 +88,10 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	ServiceResponse<PrepareWorkloadResponse> prepareWorkload(Workload workload, WorkloadRequest workloadRequest, Map opts) {
 		ServiceResponse<PrepareWorkloadResponse> resp = new ServiceResponse<PrepareWorkloadResponse>(
-			true, // successful
-			'', // no message
-			null, // no errors
-			new PrepareWorkloadResponse(workload:workload) // adding the workload to the response for convenience
+				true, // successful
+				'', // no message
+				null, // no errors
+				new PrepareWorkloadResponse(workload:workload) // adding the workload to the response for convenience
 		)
 		return resp
 	}
@@ -112,7 +116,25 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 * {@inheritDoc}
 	 */
 	@Override
-	Collection<OptionType> getOptionTypes() { [] }
+	Collection<OptionType> getOptionTypes() {
+		def options = []
+		options << new OptionType(
+				name: "Baremetal Hosts",
+				code: 'provisionType.omega.hosts',
+				displayOrder: 20,
+				fieldContext: 'config',
+				fieldName: 'hosts',
+				fieldLabel: 'Baremetal Host(s)',
+				fieldGroup: 'Options',
+				fieldCode: 'gomorpheus.optiontype.bmSelector',
+				inputType: OptionType.InputType.MULTI_SELECT,
+				dependsOn: 'config.resourcePoolId,plan.id',
+				optionSourceType: BaremetalHostsDataSetProvider.PROVIDER_NAMESPACE,
+				optionSource: BaremetalHostsDataSetProvider.PROVIDER_KEY,
+				helpText: 'Find and select one or more baremetal hosts to provision this workload on',
+		)
+		options
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -149,10 +171,27 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	Collection<ServicePlan> getServicePlans() {
 		[
-		    new ServicePlan(
+				new ServicePlan(
 						code: 'omega.baremetal.any',
 						editable: true,
 						name: 'Omega Baremetal Stub',
+						description: 'Any Server',
+						sortOrder: 0,
+						maxCores: 1,
+						maxCpu: 1,
+						maxMemory: 0,
+						maxStorage: 6871947673600,
+						customMaxStorage: true,
+						customMaxDataStorage: true,
+						addVolumes: true,
+				),
+				// Second plan introduced to test plan selection
+				// bare metal server selection during instance
+				// provisioning based on plan choice.
+				new ServicePlan(
+						code: 'omega.baremetal.any2',
+						editable: true,
+						name: 'Omega Baremetal Stub2',
 						description: 'Any Server',
 						sortOrder: 0,
 						maxCores: 1,
@@ -180,10 +219,10 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	ServiceResponse<ProvisionResponse> runWorkload(Workload workload, WorkloadRequest workloadRequest, Map opts) {
 		return new ServiceResponse<ProvisionResponse>(
-			true,
-			null, // no message
-			null, // no errors
-			new ProvisionResponse(success:true, installAgent: false, skipNetworkWait: true, noAgent: true)
+				true,
+				null, // no message
+				null, // no errors
+				new ProvisionResponse(success:true, installAgent: false, skipNetworkWait: true, noAgent: true)
 		)
 	}
 
@@ -231,16 +270,16 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 				.findAll { (!it.type.deleteOnWorkloadRemoval) }
 				.sort { it.displayOrder }
 				.eachWithIndex { it, i ->
-			it.publicIpAddress = null
-			it.addresses = null
-			it.network = null
-			it.dhcp = false
-			it.primaryInterface = false
-			it.subnet = null
-			it.networkDomain = null
-			it.networkPool = null
-			it.name = "n/a"
-		}
+					it.publicIpAddress = null
+					it.addresses = null
+					it.network = null
+					it.dhcp = false
+					it.primaryInterface = false
+					it.subnet = null
+					it.networkDomain = null
+					it.networkPool = null
+					it.name = "n/a"
+				}
 		context.services.computeServer.computeServerInterface.bulkSave(workload.server.interfaces)
 
 		// Clear out the volume that was created as our 'root' volume during provisioning.
@@ -478,8 +517,8 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		return ServiceResponse.success(new PrepareResizeV2WorkloadResponse())
 	}
 /**
-	 * {@inheritDoc}
-	 */
+ * {@inheritDoc}
+ */
 	@Override
 	ServiceResponse<ResizeV2WorkloadResponse> resizeWorkload(Instance instance, Workload workload, ResizeV2Request resizeRequest, Map opts) {
 		return resizeServer(workload.server, resizeRequest, opts)
@@ -580,6 +619,19 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 */
 	@Override
 	ServiceResponse<ProvisionResponse> runHost(ComputeServer server, HostRequest hostRequest, Map opts) {
+		server.resourcePool = context.async.cloud.pool.find(new DataQuery().withFilters(
+				new DataFilter('id', server.configMap.resourcePoolId),
+		)).blockingGet()
+
+		if (server.name.contains("Plan2")) {
+			def plan = context.services.servicePlan.find(new DataQuery().withFilter('code', 'omega.baremetal.any2'))
+			server.plan = plan
+		} else {
+			def plan = context.services.servicePlan.find(new DataQuery().withFilter('code', 'omega.baremetal.any'))
+			server.plan = plan
+		}
+
+		morpheus.services.computeServer.save(server)
 		return ServiceResponse.success(new ProvisionResponse(installAgent: false, noAgent: true))
 	}
 
@@ -894,5 +946,52 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		return ServiceResponse.success(new ResizeV2WorkloadResponse(
 				preserveVolumes: true
 		))
+	}
+
+	@Override
+	Boolean hasComputeZonePools() {
+		return true
+	}
+	/**
+	 * Indicates if a ComputeZonePool is required during provisioning
+	 * @return Boolean
+	 */
+	@Override
+	Boolean computeZonePoolRequired() {
+		return true
+	}
+
+
+	@Override
+	ServiceResponse validateInstance(Instance instance, Map opts) {
+		def sizeMultiplier = opts.layoutSize as Integer ?: 1
+		def minServerCount = instance.layout.serverCount
+		def provisionCount = opts.provisionCount as Integer ?: minServerCount * sizeMultiplier
+		if (opts.config.hosts.length != provisionCount) {
+			def errMsg = "Invalid number of bare metal hosts selected, instance scale factor requires ${provisionCount} host(s)"
+			return ServiceResponse.error(errMsg,['hosts':errMsg])
+		}
+
+		ServiceResponse.success()
+	}
+
+	@Override
+	ServiceResponse<ProvisionResponse> updateInstance(Instance instance, InstanceRequest instanceRequest, Map opts) {
+		ServiceResponse.success(new ProvisionResponse())
+	}
+
+	@Override
+	ServiceResponse<PrepareInstanceResponse> prepareInstance(Instance instance, InstanceRequest instanceRequest, Map opts) {
+		ServiceResponse.success(new ProvisionResponse())
+	}
+
+	@Override
+	ServiceResponse<ProvisionResponse> runInstance(Instance instance, InstanceRequest instanceRequest, Map opts) {
+		ServiceResponse.success(new ProvisionResponse())
+	}
+
+	@Override
+	ServiceResponse destroyInstance(Instance instance, Map opts) {
+		ServiceResponse.success(new ProvisionResponse())
 	}
 }

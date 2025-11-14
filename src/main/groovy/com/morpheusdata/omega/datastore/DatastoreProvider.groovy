@@ -71,6 +71,9 @@ class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.
 	 */
 	@Override
 	ServiceResponse removeVolume(StorageVolume volume, ComputeServer server, boolean removeSnapshots, boolean force) {
+		server.volumes.remove(volume)
+		morpheusContext.services.storage.volume.remove(volume)
+		morpheusContext.services.computeServer.save(server)
 		return ServiceResponse.success()
 	}
 
@@ -216,19 +219,6 @@ class DatastoreProvider implements DatastoreTypeProvider, DatastoreTypeProvider.
 						volume: volume
 				)
             }
-
-			// Using root volumes as shared volumes only for testing purposes
-			instanceSnapshot.snapshotFiles = server.volumes.findAll { volume ->
-				if (volume.name=="root") {
-					def datastore = morpheusContext.services.cloud.datastore.get(volume.datastore.id)
-					datastore.datastoreType.code == this.code
-				}
-			}.collect { volume ->
-				new SnapshotFile(
-						name: "${instance.name}-${volume.name}-${Instant.now().toEpochMilli()}",
-						volume: volume
-				)
-			}
 
 			instanceSnapshot.snapshots << serverSnapshot
         }

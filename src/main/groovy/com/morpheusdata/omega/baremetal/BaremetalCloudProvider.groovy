@@ -18,6 +18,7 @@ import com.morpheusdata.model.StorageControllerType
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
 import com.morpheusdata.response.ServiceResponse
+import  com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
 
 class BaremetalCloudProvider implements CloudProvider {
 	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
@@ -214,6 +215,20 @@ class BaremetalCloudProvider implements CloudProvider {
 						hasDevices: true, // This is required to show the 'Devices' tab in the UI for a compute server
 						supportsDeviceAttachment: false, // This is the default but to make it clear, this is a baremetal server and can't attach/detach devices
 						optionTypes: [
+										new OptionType(
+												code: 'serverType.omega.resourcePool',
+												inputType: OptionType.InputType.SELECT,
+												name: 'Resource Pool',
+												fieldName: 'resourcePoolId',
+												fieldLabel: 'Resource Pool',
+												fieldContext: 'config',
+												required: true,
+												defaultValue: '',
+												displayOrder: 0,
+												editable: false,
+												optionSourceType: BaremetalResourcePoolDataSetProvider.PROVIDER_NAMESPACE,
+												optionSource: BaremetalResourcePoolDataSetProvider.PROVIDER_KEY
+										),
 										new OptionType(
 												name: 'iLO Server IP',
 												code: 'omega.baremetal.provision.ilo-server-ip',
@@ -487,5 +502,10 @@ class BaremetalCloudProvider implements CloudProvider {
 	Boolean hasSecurityGroups() {
 		return false
 	}
+
+    @Override
+    Boolean provisionRequiresResourcePool() {
+        return true;
+    }
 }
 
