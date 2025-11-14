@@ -18,6 +18,7 @@ import com.morpheusdata.model.StorageControllerType
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
 import com.morpheusdata.response.ServiceResponse
+import  com.morpheusdata.omega.datasets.BareMetalResourcePoolDataSetProvider
 
 class BaremetalCloudProvider implements CloudProvider {
 	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
@@ -487,5 +488,10 @@ class BaremetalCloudProvider implements CloudProvider {
 	Boolean hasSecurityGroups() {
 		return false
 	}
+
+    @Override
+    Boolean provisionRequiresResourcePool() {
+        return true;
+    }
 }
 
