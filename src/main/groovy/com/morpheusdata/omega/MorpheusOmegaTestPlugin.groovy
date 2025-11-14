@@ -15,8 +15,8 @@
 */
 package com.morpheusdata.omega
 
-import com.morpheusdata.omega.datasets.BareMetalHostsDataSetProvider
-import com.morpheusdata.omega.datasets.BareMetalResourcePoolDataSetProvider
+import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
+import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
 import com.morpheusdata.omega.datasets.CollectionDatasetProvider
 import com.morpheusdata.omega.addon.AddonPackageTestClusterTabProvider
 import com.morpheusdata.omega.addon.AddonPackageTypeProvider
@@ -64,8 +64,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new EventClusterSubscribingIntegration(this,this.morpheus))
 		this.registerProvider(new OmegaStorageVolumeDetailProvider(this, this.morpheus))
 		this.registerProvider(new CollectionDatasetProvider(this, this.morpheus))
-		this.registerProvider(new BareMetalHostsDataSetProvider(this,this.morpheus))
-		this.registerProvider(new BareMetalResourcePoolDataSetProvider(this,this.morpheus))
+		this.registerProvider(new BaremetalHostsDataSetProvider(this,this.morpheus))
+		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
 
 	}
 

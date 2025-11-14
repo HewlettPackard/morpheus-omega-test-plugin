@@ -11,13 +11,13 @@ import com.morpheusdata.core.providers.AbstractDatasetProvider
 import com.morpheusdata.model.CloudPool
 import io.reactivex.rxjava3.core.Observable
 
-class BareMetalResourcePoolDataSetProvider extends AbstractDatasetProvider<CloudPool, String> {
-    public static final PROVIDER_NAME = "Hpe Baremetal Cloud Pool Provider"
-    public static final PROVIDER_NAMESPACE = "com.hpe.ilo"
-    public static final PROVIDER_KEY = "hpeilo-cloud-pool"
-    public static final PROVIDER_DESCRIPTION = "HPE Baremetal cloud pools"
+class BaremetalResourcePoolDataSetProvider extends AbstractDatasetProvider<CloudPool, String> {
+    public static final PROVIDER_NAME = "Omega Baremetal Cloud Pool Provider"
+    public static final PROVIDER_NAMESPACE = "com.Omega.ilo"
+    public static final PROVIDER_KEY = "omega-cloud-pool"
+    public static final PROVIDER_DESCRIPTION = "Omega Baremetal cloud pools"
 
-    BareMetalResourcePoolDataSetProvider(Plugin plugin, MorpheusContext morpheusContext) {
+    BaremetalResourcePoolDataSetProvider(Plugin plugin, MorpheusContext morpheusContext) {
         this.plugin = plugin
         this.morpheusContext = morpheusContext
     }
