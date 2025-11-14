@@ -185,6 +185,9 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 						customMaxDataStorage: true,
 						addVolumes: true,
 				),
+				// Second plan introduced to test plan selection
+				// bare metal server selection during instance
+				// provisioning based on plan choice.
 				new ServicePlan(
 						code: 'omega.baremetal.any2',
 						editable: true,
