@@ -305,7 +305,7 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 						custom: false,
 						displayOrder: 2,
 						fieldClass: null,
-						fieldAddOn: 'MB',
+						fieldAddOn: 'GB',
 						wrapperClass: null,
 						inputType: OptionType.InputType.NUMBER,
 						minVal: 1
