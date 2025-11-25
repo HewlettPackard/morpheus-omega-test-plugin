@@ -14,12 +14,15 @@ import com.morpheusdata.model.NetworkSubnetType
 import com.morpheusdata.model.NetworkType
 import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.PlatformType
+import com.morpheusdata.model.ServerStatsData
 import com.morpheusdata.model.StorageControllerType
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
 import com.morpheusdata.response.ServiceResponse
-import  com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
+import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
+import groovy.util.logging.Slf4j
 
+@Slf4j
 class BaremetalCloudProvider implements CloudProvider {
 	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
 
@@ -431,6 +434,64 @@ class BaremetalCloudProvider implements CloudProvider {
 	@Override
 	ServiceResponse deleteServer(ComputeServer computeServer) {
 		return ServiceResponse.success()
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Implementation of getServerStats for testing purposes.
+	 * This generates mock/stub server statistics data to demonstrate the feature.
+	 * In a real implementation, this would call the cloud provider's monitoring API.
+	 */
+	@Override
+	List<ServerStatsData> getServerStats(ComputeServer computeServer, Map<String, Object> opts) {
+		log.info("getServerStats called for server: ${computeServer.id} - ${computeServer.name}")
+
+		List<ServerStatsData> statsResults = []
+
+		try {
+			// Generate mock stats for the last hour with data points every 5 minutes
+			Date endDate = new Date()
+			Date startDate = new Date(endDate.time - (60 * 60 * 1000)) // 1 hour ago
+
+			// Create 12 data points (one every 5 minutes)
+			for (int i = 0; i < 12; i++) {
+				Date timestamp = new Date(startDate.time + (i * 5 * 60 * 1000))
+
+				// Generate some random-looking but realistic stats
+				Float cpuUsage = 20.0f + (Math.random() * 60.0f) // Random CPU between 20-80%
+				Long totalMemory = computeServer.maxMemory ?: 8589934592L // 8GB default
+				Long usedMemory = (totalMemory * (0.3 + Math.random() * 0.4)) as Long // 30-70% used
+				Long freeMemory = totalMemory - usedMemory
+
+				Long totalStorage = computeServer.maxStorage ?: 107374182400L // 100GB default
+				Long usedStorage = (totalStorage * (0.4 + Math.random() * 0.3)) as Long // 40-70% used
+				Long freeStorage = totalStorage - usedStorage
+
+				ServerStatsData statsData = new ServerStatsData()
+				statsData.id = computeServer.id
+				statsData.date = timestamp
+				statsData.cpuUsage = cpuUsage
+				statsData.usedMemory = usedMemory
+				statsData.maxMemory = totalMemory
+				statsData.freeMemory = freeMemory
+				statsData.usedStorage = usedStorage
+				statsData.maxStorage = totalStorage
+				statsData.freeStorage = freeStorage
+				statsData.running = computeServer.powerState == 'on'
+
+				statsResults.add(statsData)
+
+				log.debug("Generated stats for ${timestamp}: CPU=${cpuUsage}%, Memory=${usedMemory}/${totalMemory}, Running=${statsData.running}")
+			}
+
+			log.info("Generated ${statsResults.size()} stats data points for server ${computeServer.id}")
+
+		} catch (Exception e) {
+			log.error("Error generating server stats for ${computeServer.id}: ${e.message}", e)
+		}
+
+		return statsResults
 	}
 
 	/**
