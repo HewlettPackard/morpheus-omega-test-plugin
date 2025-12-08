@@ -564,9 +564,70 @@ class BaremetalCloudProvider implements CloudProvider {
 		return false
 	}
 
-    @Override
-    Boolean provisionRequiresResourcePool() {
-        return true;
-    }
-}
+	@Override
+	Boolean provisionRequiresResourcePool() {
+		return true;
+	}
 
+	/**
+	 * Provides cloud summary information for the Cloud -> Summary tab
+	 * This demonstrates all three types of zone summary customization:
+	 * 1. Standard info items
+	 * 2. Custom zone summary renderer
+	 * 3. Custom costing summary renderer
+	 */
+	@Override
+	com.morpheusdata.model.CloudSummary getCloudSummary(Cloud cloud, com.morpheusdata.model.User user) {
+		log.info("Getting cloud summary for cloud: ${cloud.name}")
+
+		def summary = new com.morpheusdata.model.CloudSummary()
+
+		// 1. Add standard info items
+		def infoItems = []
+
+		// Add custom fields to the standard info section
+		def enableVnc = cloud.getConfigProperty('enableVnc')
+		if (enableVnc != null) {
+			infoItems << new com.morpheusdata.model.CloudSummaryInfoItem(
+				'Hypervisor Console',
+				null,
+				enableVnc ? 'Enabled' : 'Disabled'
+			)
+		}
+
+		def enableNetworkTypeSelection = cloud.getConfigProperty('enableNetworkTypeSelection')
+		if (enableNetworkTypeSelection != null) {
+			infoItems << new com.morpheusdata.model.CloudSummaryInfoItem(
+				'Network Type Selection',
+				null,
+				enableNetworkTypeSelection ? 'Enabled' : 'Disabled'
+			)
+		}
+
+		// Add a custom field showing cloud classification
+		infoItems << new com.morpheusdata.model.CloudSummaryInfoItem(
+			'Cloud Classification',
+			null,
+			getCloudClassification().toString()
+		)
+
+		summary.infoItems = infoItems
+
+		// 2. Enable custom zone summary (optional - would require a CloudSummaryProvider)
+		// summary.zoneSummaryRenderer = "baremetalZoneSummary"
+		// summary.zoneSummaryData = [
+		//     cloudId: cloud.id,
+		//     cloudName: cloud.name
+		// ]
+
+		// 3. Enable custom costing summary (optional - would require a CloudCostingSummaryProvider)
+		// if (hasCosting()) {
+		//     summary.costingSummaryRenderer = "baremetalCostingSummary"
+		//     summary.costingSummaryData = [
+		//         cloudId: cloud.id
+		//     ]
+		// }
+
+		return summary
+	}
+}
