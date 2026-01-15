@@ -126,12 +126,4 @@ class BaremetalHostsDataSetProvider extends AbstractDatasetProvider<ComputeServe
     String itemValue(ComputeServer item) {
         return item.id
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    boolean isPlugin() {
-        return true
-    }
 }

@@ -33,14 +33,6 @@ class AddonPackageTypeProvider implements ComputeTypePackageProvider {
 		 * {@inheritDoc}
 		 */
 		@Override
-		boolean isPlugin() {
-				return true
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		@Override
 		MorpheusContext getMorpheus() {
 				return morpheusContext
 		}
