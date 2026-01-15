@@ -23,6 +23,8 @@ import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.ProvisionType
 import com.morpheusdata.model.ServicePlan
 import com.morpheusdata.model.Snapshot
+import com.morpheusdata.model.StorageAggregate
+import com.morpheusdata.model.StorageVolume
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.model.VirtualImageType
 import com.morpheusdata.model.Workload
@@ -147,7 +149,26 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 * {@inheritDoc}
 	 */
 	@Override
-	Collection<StorageVolumeType> getRootVolumeStorageTypes() { [] }
+	Collection<StorageVolumeType> getRootVolumeStorageTypes() {
+		def storageVolumeTypes = [
+			new StorageVolumeType(
+				code: "omega.baremetal.raid0",
+				externalId: 'omega_baremetal_raid0',
+				displayName: "Omega Baremetal RAID 0",
+				name: "RAID0",
+				description: "Omega Baremetal - RAID 0",
+				displayOrder: 1,
+				defaultType: true,
+				allowSearch: true,
+				enabled: true,
+				hasDatastore: false,
+				resizable: false,
+				planResizable: false
+			)
+		]
+
+		storageVolumeTypes
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -218,6 +239,29 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 */
 	@Override
 	ServiceResponse<ProvisionResponse> runWorkload(Workload workload, WorkloadRequest workloadRequest, Map opts) {
+		StorageAggregate aggregate = new StorageAggregate(
+				uuid: "${UUID.randomUUID().toString()}",
+				refType: "ComputeServer",
+				refId: workload.server.id,
+				name: "Raid0",
+				type: context.services.storage.aggregate.storageAggregateType.find(
+						new DataQuery().withFilter('code', BaremetalCloudProvider.STORAGE_AGGREGATE_TYPE_RAID1_CODE)
+				)
+		)
+
+		aggregate.members = workload.server.volumes.findAll{
+			it.type.code == 'standard'
+		}
+		aggregate.volumes = [workload.server.volumes.find{
+			it.type.code == 'omega.baremetal.raid0'
+		}]
+		context.services.storage.aggregate.create(aggregate)
+
+		// update root raid volume (it's the only type it can be) to the size of all the member disks
+		def rootRaidVolume = context.services.storage.volume.get(aggregate.volumes.first().id)
+		rootRaidVolume.maxStorage = (Long) aggregate.members.sum {it.maxStorage}
+		context.services.storage.volume.save(rootRaidVolume)
+
 		return new ServiceResponse<ProvisionResponse>(
 				true,
 				null, // no message
@@ -285,6 +329,18 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		// Clear out the volume that was created as our 'root' volume during provisioning.
 		def rootVol  = workload.server.volumes.find { it.rootVolume && !it.datastore }
 		if (rootVol) {
+
+			// remove any aggregates creating during runWorkload
+			def aggregates = context.services.storage.aggregate.list(new DataQuery().withFilters(
+					new DataFilter('refId', workload.server.id),
+					new DataFilter('refType', 'ComputeServer')
+			))
+			aggregates.each {
+				it.volumes = []
+				it.members = []
+			}
+			context.services.storage.aggregate.bulkSave(aggregates)
+			context.services.storage.aggregate.bulkRemove(aggregates)
 			context.async.storageVolume.remove([rootVol], workload.server, true).blockingGet()
 			workload.server = context.services.computeServer.get(workload.server.id)
 		}
@@ -764,6 +820,31 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 			context.services.computeServer.computeDevice.create(computeDevice)
 		}
 
+		// Create a couple of synthetic disk StorageVolumes for this host
+		def diskType = context.services.storage.volume.storageVolumeType.find(
+			new DataQuery().withFilter("code", "standard")
+		)
+
+		def numDisks = Long.valueOf(server.configMap.numDisks)
+
+		def disks = []
+		numDisks.times { idx ->
+			def deviceLetter = (char)((int)'b' + idx)
+			disks << new StorageVolume(
+					name: "disk${idx}",
+					type: diskType,
+					maxStorage: (1 + idx) * 100L * 1024L * 1024L * 1024L, // 100GB, 100GB, 200GB, etc.
+					volumeType: "disk",
+					displayOrder: idx + 1,
+					rootVolume: false,
+					deviceName: "/dev/sd${deviceLetter}",
+					uniqueId: "${UUID.randomUUID().toString().replace('-','')}",
+					externalId: "omega-${UUID.randomUUID().toString().replace('-','')}",
+
+			)
+		}
+		context.async.storageVolume.create(disks, server).blockingGet()
+
 		return ServiceResponse.success()
 	}
 
@@ -947,19 +1028,19 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 				preserveVolumes: true
 		))
 	}
-
-	@Override
-	Boolean hasComputeZonePools() {
-		return true
-	}
-	/**
-	 * Indicates if a ComputeZonePool is required during provisioning
-	 * @return Boolean
-	 */
-	@Override
-	Boolean computeZonePoolRequired() {
-		return true
-	}
+//
+//	@Override
+//	Boolean hasComputeZonePools() {
+//		return true
+//	}
+//	/**
+//	 * Indicates if a ComputeZonePool is required during provisioning
+//	 * @return Boolean
+//	 */
+//	@Override
+//	Boolean computeZonePoolRequired() {
+//		return true
+//	}
 
 
 	@Override
@@ -967,10 +1048,10 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 		def sizeMultiplier = opts.layoutSize as Integer ?: 1
 		def minServerCount = instance.layout.serverCount
 		def provisionCount = opts.provisionCount as Integer ?: minServerCount * sizeMultiplier
-		if (opts.config.hosts.length != provisionCount) {
-			def errMsg = "Invalid number of bare metal hosts selected, instance scale factor requires ${provisionCount} host(s)"
-			return ServiceResponse.error(errMsg,['hosts':errMsg])
-		}
+//		if (opts.config.hosts.length != provisionCount) {
+//			def errMsg = "Invalid number of bare metal hosts selected, instance scale factor requires ${provisionCount} host(s)"
+//			return ServiceResponse.error(errMsg,['hosts':errMsg])
+//		}
 
 		ServiceResponse.success()
 	}

@@ -15,6 +15,7 @@ import com.morpheusdata.model.NetworkType
 import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.PlatformType
 import com.morpheusdata.model.ServerStatsData
+import com.morpheusdata.model.StorageAggregateType
 import com.morpheusdata.model.StorageControllerType
 import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
@@ -25,6 +26,7 @@ import groovy.util.logging.Slf4j
 @Slf4j
 class BaremetalCloudProvider implements CloudProvider {
 	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
+	public static final String STORAGE_AGGREGATE_TYPE_RAID1_CODE = 'omega.storage-aggregate-type.raid1'
 
 	protected MorpheusContext context
 	protected Plugin plugin
@@ -179,7 +181,25 @@ class BaremetalCloudProvider implements CloudProvider {
 	 * {@inheritDoc} 
 	 */
 	@Override
-	Collection<StorageVolumeType> getStorageVolumeTypes() { [] }
+	Collection<StorageVolumeType> getStorageVolumeTypes() {
+		def storageVolumeTypes = [
+			new StorageVolumeType(
+				code: "omega.baremetal.raid0",
+				externalId: 'omega_baremetal_raid0',
+				displayName: "Omega Baremetal RAID 0",
+				name: "RAID0",
+				description: "Omega Baremetal - RAID 0",
+				displayOrder: 1,
+				defaultType: true,
+				allowSearch: true,
+				enabled: true,
+				hasDatastore: false,
+				resizable: false,
+				planResizable: false
+			)
+		]
+
+		storageVolumeTypes }
 
 	/**
 	 * {@inheritDoc} 
@@ -309,6 +329,23 @@ class BaremetalCloudProvider implements CloudProvider {
 												global: false,
 												custom: false,
 												defaultValue: 4,
+										),
+										new OptionType(
+												name: 'num-disks',
+												code: 'omega.baremetal.provision.num-disk',
+												category: 'omega.baremetal.provision',
+												inputType: OptionType.InputType.NUMBER,
+												fieldName: 'numDisks',
+												fieldContext: 'config',
+												fieldLabel: 'Number of Disks',
+												fieldGroup: 'advanced',
+												displayOrder: 2,
+												required: false,
+												enabled: true,
+												editable: false,
+												global: false,
+												custom: false,
+												defaultValue: 2,
 										),
 						]
 				)
@@ -564,9 +601,17 @@ class BaremetalCloudProvider implements CloudProvider {
 		return false
 	}
 
+    @Override
+    Boolean provisionRequiresResourcePool() {
+        return true;
+    }
+
 	@Override
-	Boolean provisionRequiresResourcePool() {
-		return true;
+	Collection<StorageAggregateType> getStorageAggregateTypes() {
+		[new StorageAggregateType(
+				name: 'RAID1',
+				code: STORAGE_AGGREGATE_TYPE_RAID1_CODE
+		)]
 	}
 
 	/**
