@@ -9,6 +9,7 @@ import com.morpheusdata.model.Cloud
 import com.morpheusdata.model.ComputeDeviceType
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerType
+import com.morpheusdata.model.GenerateSupportBundleContentsRequest
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.NetworkSubnetType
 import com.morpheusdata.model.NetworkType
@@ -21,10 +22,11 @@ import com.morpheusdata.model.StorageVolumeType
 import com.morpheusdata.request.ValidateCloudRequest
 import com.morpheusdata.response.ServiceResponse
 import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
+import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
 
 @Slf4j
-class BaremetalCloudProvider implements CloudProvider {
+class BaremetalCloudProvider implements CloudProvider, CloudProvider.CloudSupportBundleFacet {
 	public static final String CLOUD_PROVIDER_CODE = 'omega.baremetal.cloud'
 	public static final String STORAGE_AGGREGATE_TYPE_RAID1_CODE = 'omega.storage-aggregate-type.raid1'
 
@@ -674,5 +676,62 @@ class BaremetalCloudProvider implements CloudProvider {
 		// }
 
 		return summary
+	}
+
+	/**
+	 * Generate support bundle contents for this cloud/zone.
+	 * This method is called when a support bundle is being generated and allows the provider
+	 * to add custom diagnostic information specific to this cloud integration.
+	 *
+	 * @param cloud The cloud/zone to generate support bundle contents for
+	 * @param request The request containing the target directory and resource info
+	 * @return ServiceResponse indicating success or failure
+	 */
+	@Override
+	ServiceResponse generateSupportBundleContents(Cloud cloud, GenerateSupportBundleContentsRequest request) {
+		log.info("Generating support bundle contents for Baremetal cloud: ${cloud.name}")
+
+		try {
+			def contentsDir = request.contentsDir
+
+			// Add cloud configuration details
+			def cloudConfigFile = contentsDir['baremetal-cloud-config.json']
+			def cloudConfig = [
+				cloudId: cloud.id,
+				cloudName: cloud.name,
+				cloudCode: cloud.code,
+				enabled: cloud.enabled,
+				status: cloud.status,
+				classification: getCloudClassification().toString(),
+				visibility: cloud.visibility,
+				apiUrl: cloud.serviceUrl,
+				accountId: cloud.account?.id,
+				createdDate: cloud.dateCreated?.toString(),
+				lastUpdated: cloud.lastUpdated?.toString()
+			]
+			cloudConfigFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(cloudConfig))
+
+			// Add resource pool information
+			def resourcePools = context.async.cloud.pool.listByCloudAndExternalIdIn(cloud.id, []).toList().blockingGet()
+			if (resourcePools) {
+				def poolsFile = contentsDir['baremetal-resource-pools.json']
+				def poolsData = resourcePools.collect { pool ->
+					[
+						id: pool.id,
+						name: pool.name,
+						externalId: pool.externalId,
+						active: pool.active
+					]
+				}
+				poolsFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(poolsData))
+			}
+
+			log.info("Successfully generated support bundle contents for Baremetal cloud: ${cloud.name}")
+			return ServiceResponse.success()
+
+		} catch (Exception e) {
+			log.error("Error generating support bundle contents for Baremetal cloud ${cloud.name}: ${e.message}", e)
+			return ServiceResponse.error("Failed to generate support bundle contents: ${e.message}")
+		}
 	}
 }

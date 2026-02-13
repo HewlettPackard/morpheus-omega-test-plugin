@@ -16,6 +16,7 @@ import com.morpheusdata.model.ComputeDevice
 import com.morpheusdata.model.ComputeServer
 import com.morpheusdata.model.ComputeServerInterface
 import com.morpheusdata.model.ComputeServerInterfaceType
+import com.morpheusdata.model.GenerateSupportBundleContentsRequest
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.Instance
 import com.morpheusdata.model.NetAddress
@@ -47,6 +48,7 @@ import com.morpheusdata.response.ResizeV2WorkloadResponse
 import com.morpheusdata.response.ServiceResponse
 import com.morpheusdata.response.ValidateResizeV2WorkloadResponse
 import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
+import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
 
 /**
@@ -57,7 +59,7 @@ import groovy.util.logging.Slf4j
 class BaremetalProvisionProvider extends AbstractProvisionProvider
 		implements WorkloadProvisionProvider, ProvisionInstanceServers, ProvisionProvider.HypervisorConsoleFacet,
 				WorkloadProvisionProvider.ResizeV2Facet, HostProvisionProvider, HostProvisionProvider.ResizeV2Facet, HostProvisionProvider.finalizeHostFacet,  ProvisionProvider.SnapshotFacet,
-				ProvisionProvider.ConvertToManagedFacet,ResourceProvisionProvider {
+				ProvisionProvider.ConvertToManagedFacet, ResourceProvisionProvider, HostProvisionProvider.HostSupportBundleFacet {
 	public static final String PROVISION_PROVIDER_CODE = 'omega.baremetal.provision'
 	public static final String ALLETRA_STORAGE_TYPE_CODE = 'hpealletraMPLUN'
 	public static final String CSI_VLAN_CODE = "omega.baremetal.csi.vlan"
@@ -1074,5 +1076,55 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	@Override
 	ServiceResponse destroyInstance(Instance instance, Map opts) {
 		ServiceResponse.success(new ProvisionResponse())
+	}
+
+	/**
+	 * Generate support bundle contents for this provision provider.
+	 * This method is called when a support bundle is being generated for a server
+	 * and allows the provider to add custom diagnostic information.
+	 *
+	 * @param server The server to generate support bundle contents for
+	 * @param request The request containing the target directory and resource info
+	 * @return ServiceResponse indicating success or failure
+	 */
+	@Override
+	ServiceResponse generateSupportBundleContents(ComputeServer server, GenerateSupportBundleContentsRequest request) {
+		log.info("Generating support bundle contents for Baremetal server: ${server.name}")
+
+		try {
+			def contentsDir = request.contentsDir
+
+			// Add server configuration details
+			def serverConfigFile = contentsDir['server-config.json']
+			def serverConfig = [
+				serverId: server.id,
+				serverName: server.name,
+				externalId: server.externalId,
+				status: server.status,
+				powerState: server.powerState,
+				plan: server.plan?.name,
+				osType: server.osType,
+				platform: server.platform,
+				agentInstalled: server.agentInstalled,
+				resourcePoolId: server.resourcePool?.id,
+				resourcePoolName: server.resourcePool?.name,
+				cloudId: server.cloud?.id,
+				cloudName: server.cloud?.name,
+				accountId: server.account?.id,
+				maxMemory: server.maxMemory,
+				maxCores: server.maxCores,
+				maxStorage: server.maxStorage,
+				createdDate: server.dateCreated?.toString(),
+				lastUpdated: server.lastUpdated?.toString()
+			]
+			serverConfigFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(serverConfig))
+
+			log.info("Successfully generated support bundle contents for Baremetal server: ${server.name}")
+			return ServiceResponse.success()
+
+		} catch (Exception e) {
+			log.error("Error generating support bundle contents for Baremetal server ${server.name}: ${e.message}", e)
+			return ServiceResponse.error("Failed to generate support bundle contents: ${e.message}")
+		}
 	}
 }

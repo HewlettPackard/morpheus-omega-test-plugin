@@ -3,8 +3,10 @@ package com.morpheusdata.omega.storageserver
 
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
+import com.morpheusdata.core.data.DataQuery
 import com.morpheusdata.core.providers.StorageProvider
 import com.morpheusdata.core.providers.StorageProviderVolumes
+import com.morpheusdata.model.GenerateSupportBundleContentsRequest
 import com.morpheusdata.model.Icon
 import com.morpheusdata.model.OptionType;
 import com.morpheusdata.model.StorageGroup
@@ -17,7 +19,7 @@ import com.morpheusdata.response.ServiceResponse
 import com.morpheusdata.views.Renderer
 import groovy.json.JsonOutput
 
-class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
+class StorageServerProvider implements StorageProvider, StorageProviderVolumes, StorageProvider.StorageServerSupportBundleFacet {
 
 	public static final String STORAGE_PROVIDER_CODE = 'omega.sstp'
 
@@ -367,5 +369,50 @@ class StorageServerProvider implements StorageProvider, StorageProviderVolumes{
 
 	Renderer<?> getRenderer() {
 		return null;
+	}
+
+	/**
+	 * Generate support bundle contents for this storage server.
+	 * This method is called when a support bundle is being generated for a storage server
+	 * and allows the provider to add custom diagnostic information.
+	 *
+	 * @param storageServer The storage server to generate support bundle contents for
+	 * @param request The request containing the target directory and resource info
+	 * @return ServiceResponse indicating success or failure
+	 */
+	@Override
+	ServiceResponse generateSupportBundleContents(com.morpheusdata.model.StorageServer storageServer, GenerateSupportBundleContentsRequest request) {
+		log.info("Generating support bundle contents for Omega storage server: ${storageServer.name}")
+
+		try {
+			def contentsDir = request.contentsDir
+
+			// Add storage server configuration details
+			def serverConfigFile = contentsDir['omega-storage-server-config.json']
+			def serverConfig = [
+				serverId: storageServer.id,
+				serverName: storageServer.name,
+				serverType: storageServer.type?.name,
+				status: storageServer.status,
+				statusMessage: storageServer.statusMessage,
+				serviceUrl: storageServer.serviceUrl,
+				serviceHost: storageServer.serviceHost,
+				servicePort: storageServer.servicePort,
+				internalIp: storageServer.internalIp,
+				externalIp: storageServer.externalIp,
+				enabled: storageServer.enabled,
+				accountId: storageServer.account?.id,
+				createdDate: storageServer.dateCreated?.toString(),
+				lastUpdated: storageServer.lastUpdated?.toString()
+			]
+			serverConfigFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(serverConfig))
+
+			log.info("Successfully generated support bundle contents for Omega storage server: ${storageServer.name}")
+			return ServiceResponse.success()
+
+		} catch (Exception e) {
+			log.error("Error generating support bundle contents for Omega storage server ${storageServer.name}: ${e.message}", e)
+			return ServiceResponse.error("Failed to generate support bundle contents: ${e.message}")
+		}
 	}
 }
