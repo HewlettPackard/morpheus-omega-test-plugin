@@ -28,8 +28,8 @@ group = 'com.morpheusdata'
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
 
 java {
-	sourceCompatibility = JavaVersion.toVersion('1.11')
-    targetCompatibility = JavaVersion.toVersion('1.11')
+	sourceCompatibility = JavaVersion.toVersion('1.25')
+    targetCompatibility = JavaVersion.toVersion('1.25')
 }
 
 repositories {
@@ -91,7 +91,7 @@ jar {
 				'Morpheus-Logo-Dark': 'assets/morpheus.svg',
 				'Morpheus-Labels': 'Plugin',
 				'Morpheus-Repo': 'https://github.com/hpe/morpheus-omega-test-plugin',
-				'Morpheus-Min-Appliance-Version': "8.0.7"
+				'Morpheus-Min-Appliance-Version': "9.0.0"
 		)
 	}
 }
