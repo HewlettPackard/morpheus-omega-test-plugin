@@ -32,6 +32,7 @@ import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
+import com.morpheusdata.omega.system.OmegaSystemProvider
 
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
@@ -66,6 +67,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new CollectionDatasetProvider(this, this.morpheus))
 		this.registerProvider(new BaremetalHostsDataSetProvider(this,this.morpheus))
 		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
+		this.registerProvider(new OmegaSystemProvider(this,this.morpheus))
 
 	}
 
