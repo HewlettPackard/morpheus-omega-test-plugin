@@ -35,7 +35,6 @@ import com.morpheusdata.model.provisioning.WorkloadRequest
 import com.morpheusdata.request.AfterConvertToManagedRequest
 import com.morpheusdata.request.BeforeConvertToManagedRequest
 import com.morpheusdata.request.CreateSnapshotRequest
-import com.morpheusdata.request.ResizeRequest
 import com.morpheusdata.request.ResizeV2Request
 import com.morpheusdata.response.AfterConvertToManagedResponse
 import com.morpheusdata.response.BeforeConvertToManagedResponse
