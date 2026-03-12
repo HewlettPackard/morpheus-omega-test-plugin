@@ -18,6 +18,7 @@ package com.morpheusdata.omega
 import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
 import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
 import com.morpheusdata.omega.datasets.CollectionDatasetProvider
+import com.morpheusdata.omega.datasets.OmegaIpamPoolServerDatasetProvider
 import com.morpheusdata.omega.addon.AddonPackageTestClusterTabProvider
 import com.morpheusdata.omega.addon.AddonPackageTypeProvider
 import com.morpheusdata.omega.baremetal.BaremetalCloudProvider
@@ -30,6 +31,7 @@ import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
+import com.morpheusdata.omega.ipam.OmegaIpamProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 
@@ -58,6 +60,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new StorageServerProvider(this,this.morpheus))
 
+		this.registerProvider(new OmegaIpamProvider(this, this.morpheus))
+
 		this.registerProvider(new DatastoreProvider(this, this.morpheus))
 
 		this.registerProvider(new EventGlobalSubscribingProvider(this,this.morpheus))
@@ -66,6 +70,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new CollectionDatasetProvider(this, this.morpheus))
 		this.registerProvider(new BaremetalHostsDataSetProvider(this,this.morpheus))
 		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
+		this.registerProvider(new OmegaIpamPoolServerDatasetProvider(this, this.morpheus))
 
 	}
 
