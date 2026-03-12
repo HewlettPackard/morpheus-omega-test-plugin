@@ -124,32 +124,28 @@ class OmegaIpamProvider implements IPAMProvider {
 				code: 'omega.ipam.pool',
 				name: 'Omega IPAM Pool',
 				creatable: true,
-				description: 'Omega test IPAM pool type'
-			)
-		]
-	}
-
-	@Override
-	List<OptionType> getNetworkPoolOptionTypes() {
-		return [
-			new OptionType(
-				code: 'omega.ipam.pool.poolServer',
-				name: 'poolServer',
-				category: 'networkPool.omega.ipam.pool',
-				fieldName: 'poolServer',
-				fieldCode: 'gomorpheus.label.integration',
-				fieldLabel: 'Integration',
-				fieldContext: 'domain',
-				inputType: OptionType.InputType.SELECT,
-				required: true,
-				enabled: true,
-				editable: true,
-				global: false,
-				noBlank: true,
-				noSelection: 'Select',
-				displayOrder: 0,
-				optionSourceType: OmegaIpamPoolServerDatasetProvider.PROVIDER_NAMESPACE,
-				optionSource: OmegaIpamPoolServerDatasetProvider.PROVIDER_KEY
+				description: 'Omega test IPAM pool type',
+				optionTypes: [
+					new OptionType(
+						code: 'omega.ipam.pool.poolServer',
+						name: 'poolServer',
+						category: 'networkPool.omega.ipam.pool',
+						fieldName: 'poolServer',
+						fieldCode: 'gomorpheus.label.integration',
+						fieldLabel: 'Integration',
+						fieldContext: 'domain',
+						inputType: OptionType.InputType.SELECT,
+						required: true,
+						enabled: true,
+						editable: true,
+						global: false,
+						noBlank: true,
+						noSelection: 'Select',
+						displayOrder: 0,
+						optionSourceType: OmegaIpamPoolServerDatasetProvider.PROVIDER_NAMESPACE,
+						optionSource: OmegaIpamPoolServerDatasetProvider.PROVIDER_KEY
+					)
+				]
 			)
 		]
 	}
