@@ -31,6 +31,7 @@ import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
+import com.morpheusdata.omega.processjob.OmegaProcessJobProvider
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
@@ -75,6 +76,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new OmegaBackupProviderBackupProvider(this, this.morpheus))
 
+		this.registerProvider(new OmegaProcessJobProvider(this, this.morpheus))
 	}
 
 	/**
