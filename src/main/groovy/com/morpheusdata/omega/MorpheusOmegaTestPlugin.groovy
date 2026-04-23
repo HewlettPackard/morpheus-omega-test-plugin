@@ -15,6 +15,8 @@
 */
 package com.morpheusdata.omega
 
+import com.morpheusdata.omega.backup.OmegaBackupProviderBackupProvider
+import com.morpheusdata.omega.credential.AdCredentialProvider
 import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
 import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
 import com.morpheusdata.omega.datasets.CollectionDatasetProvider
@@ -29,6 +31,7 @@ import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
+import com.morpheusdata.omega.processjob.OmegaProcessJobProvider
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
@@ -69,6 +72,11 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
 		this.registerProvider(new OmegaSystemProvider(this,this.morpheus))
 
+		this.registerProvider(new AdCredentialProvider(this, this.morpheus))
+
+		this.registerProvider(new OmegaBackupProviderBackupProvider(this, this.morpheus))
+
+		this.registerProvider(new OmegaProcessJobProvider(this, this.morpheus))
 	}
 
 	/**

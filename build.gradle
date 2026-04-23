@@ -45,11 +45,15 @@ configurations {
 }
 
 dependencies {
-	provided "com.morpheusdata:morpheus-plugin-api:$morpheusApiVersion"
+	provided("com.morpheusdata:morpheus-plugin-api:$morpheusApiVersion") {
+		exclude group: 'org.codehaus.groovy'
+	}
 
-	provided("com.bertramlabs.plugins:karman-core:${karmanVersion}")
+	provided("com.bertramlabs.plugins:karman-core:${karmanVersion}") {
+		exclude group: 'org.codehaus.groovy'
+	}
 
-	provided "org.codehaus.groovy:groovy-all:$groovyVersion"
+	provided "org.apache.groovy:groovy-all:$groovyVersion"
 	implementation 'commons-beanutils:commons-beanutils:1.9.3'
 	implementation "org.slf4j:slf4j-api:$slf4jVersion"
 	implementation "org.slf4j:slf4j-parent:$slf4jVersion"
@@ -61,7 +65,7 @@ dependencies {
 	testImplementation 'org.apache.httpcomponents:httpcore:4.4.5'
 	testImplementation "org.slf4j:slf4j-parent:$slf4jVersion"
 
-	testImplementation "org.codehaus.groovy:groovy-all:$groovyVersion"
+	testImplementation "org.apache.groovy:groovy-all:$groovyVersion"
 	testImplementation 'net.bytebuddy:byte-buddy:1.9.3'
 	testImplementation 'org.objenesis:objenesis:2.6'
 	testImplementation platform("org.spockframework:spock-bom:$spockVersion")
