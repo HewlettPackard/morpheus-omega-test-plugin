@@ -17,6 +17,8 @@ package com.morpheusdata.omega
 
 import com.morpheusdata.omega.datasets.BaremetalHostsDataSetProvider
 import com.morpheusdata.omega.datasets.BaremetalResourcePoolDataSetProvider
+import com.morpheusdata.omega.deviceCredential.DevicePasswordCredentialTypeProvider
+import com.morpheusdata.omega.deviceCredential.DevicePasswordCypherProvider
 import com.morpheusdata.omega.datasets.CollectionDatasetProvider
 import com.morpheusdata.omega.addon.AddonPackageTestClusterTabProvider
 import com.morpheusdata.omega.addon.AddonPackageTypeProvider
@@ -69,6 +71,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
 		this.registerProvider(new OmegaSystemProvider(this,this.morpheus))
 
+		this.registerProvider(new DevicePasswordCredentialTypeProvider(this, this.morpheus))
+		this.registerProvider(new DevicePasswordCypherProvider(this, this.morpheus))
 	}
 
 	/**

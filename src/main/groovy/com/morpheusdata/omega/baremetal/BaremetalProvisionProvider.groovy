@@ -723,6 +723,10 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 				"iqn.2016-04.com.hpe:${server.name}-${server.id}".toString(),
 		])
 
+		// credential
+		def credential = morpheus.services.accountCredential.loadCredentials(server)
+		log.info("credential for ilo: {}", credential.data)
+
 		if (server.configMap?.consoleHost) {
 			server.consoleType = 'ilo'
 			server.consoleHost = server.configMap?.consoleHost
