@@ -20,7 +20,6 @@ import com.morpheusdata.response.ServiceResponse
  * </ul>
  *
  * @since 1.4.0
- * @author Sean Ridgley
  */
 class OmegaProcessJobProvider implements ProcessJobProvider {
 
