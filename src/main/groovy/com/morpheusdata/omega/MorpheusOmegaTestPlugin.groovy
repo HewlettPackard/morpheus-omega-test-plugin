@@ -32,6 +32,7 @@ import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
 import com.morpheusdata.omega.processjob.OmegaProcessJobProvider
+import com.morpheusdata.omega.processjob.OmegaProcessJobRestServer
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
@@ -39,6 +40,8 @@ import com.morpheusdata.omega.system.OmegaSystemProvider
 
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
+
+	private OmegaProcessJobRestServer processJobRestServer
 
 	@Override
 	String getCode() {
@@ -76,7 +79,12 @@ class MorpheusOmegaTestPlugin extends Plugin {
 
 		this.registerProvider(new OmegaBackupProviderBackupProvider(this, this.morpheus))
 
-		this.registerProvider(new OmegaProcessJobProvider(this, this.morpheus))
+		def omegaProcessJobProvider = new OmegaProcessJobProvider(this, this.morpheus)
+		this.registerProvider(omegaProcessJobProvider)
+
+		// Start the test REST server for exercising process job workflows
+		processJobRestServer = new OmegaProcessJobRestServer(this, this.morpheus, omegaProcessJobProvider)
+		processJobRestServer.start()
 	}
 
 	/**
@@ -84,6 +92,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 	 */
 	@Override
 	void onDestroy() {
-		//nothing to do for now
+		if (processJobRestServer) {
+			processJobRestServer.stop()
+		}
 	}
 }
