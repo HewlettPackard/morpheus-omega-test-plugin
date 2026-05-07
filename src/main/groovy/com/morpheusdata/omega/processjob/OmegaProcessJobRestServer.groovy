@@ -5,7 +5,6 @@ import com.morpheusdata.core.Plugin
 import com.morpheusdata.model.Process as ProcessModel
 import com.morpheusdata.model.ProcessEvent
 import com.morpheusdata.model.ProcessStepType
-import com.morpheusdata.model.Workload
 import com.morpheusdata.model.process.InsertProcessStepRequest
 import com.morpheusdata.model.process.InsertProcessStepResponse
 import com.morpheusdata.model.process.ProcessJobExecutionRequest
@@ -18,7 +17,12 @@ import com.sun.net.httpserver.HttpServer
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import java.net.InetSocketAddress
+import java.security.cert.X509Certificate
 import java.util.concurrent.Executors
 
 /**
@@ -114,9 +118,14 @@ class OmegaProcessJobRestServer {
 
 	/**
 	 * POST /process-jobs/create
-	 * Creates a Process with a single omega process job step.
-	 * Body: { "workloadId": 123, "config": { "simulateFailure": "true", ... }, "eventTitle": "..." }
-	 * Returns: { "success": true, "processId": 123, "eventId": 456 }
+	 * Creates an Omega system via the Morpheus API, which bootstraps a Process with
+	 * omega process job steps through OmegaSystemProvider's lifecycle hooks.
+	 *
+	 * Headers: Authorization: Bearer {morpheus-api-token}
+	 * Body: { "morpheusUrl": "https://localhost", "name": "test-system-1", "config": {...} }
+	 *
+	 * The morpheusUrl defaults to https://localhost if not provided.
+	 * Returns: { "success": true, "systemId": 123 }
 	 */
 	private class CreateHandler implements HttpHandler {
 		@Override
@@ -127,46 +136,51 @@ class OmegaProcessJobRestServer {
 			}
 			try {
 				def body = parseBody(exchange)
-				def config = (body.config as Map) ?: [sleepSeconds: 2, outputMessage: 'Omega test step']
-				def eventTitle = body.eventTitle ?: 'Omega Process Job Test Step'
-				Long workloadId = body.workloadId as Long
+				def authToken = extractBearerToken(exchange)
 
-				if (!workloadId) {
-					sendJson(exchange, 400, [success: false, msg: 'workloadId is required'])
+				if (!authToken) {
+					sendJson(exchange, 401, [success: false, msg: 'Authorization: Bearer <token> header required'])
 					return
 				}
 
-				Workload workload = morpheusContext.services.workload.get(workloadId)
-				if (!workload) {
-					sendJson(exchange, 404, [success: false, msg: "Workload ${workloadId} not found"])
+				def morpheusUrl = (body.morpheusUrl as String) ?: 'https://localhost'
+				def systemName = (body.name as String) ?: "omega-test-${System.currentTimeMillis()}"
+
+				// Look up the omega system type and layout IDs
+				def typeAndLayout = resolveOmegaSystemTypeIds(morpheusUrl, authToken)
+				if (!typeAndLayout.success) {
+					sendJson(exchange, 500, [success: false, msg: typeAndLayout.msg])
 					return
 				}
 
-				// Start a process via the proper API
-				def savedProcess = morpheusContext.services.process.startProcess(
-					workload, ProcessStepType.forCode('general'), null, 'omega-test', eventTitle
-				)
-
-				if (!savedProcess?.id) {
-					sendJson(exchange, 500, [success: false, msg: 'Failed to create process'])
-					return
+				// Create the system via Morpheus API — this triggers OmegaSystemProvider
+				// lifecycle hooks which insert process steps
+				def systemPayload = [
+					system: [
+						name  : systemName,
+						type  : [id: typeAndLayout.typeId],
+						layout: [id: typeAndLayout.layoutId]
+					]
+				]
+				if (body.config) {
+					systemPayload.system.config = body.config
 				}
 
-				// Insert a step
-				def stepEvent = new ProcessEvent()
-				stepEvent.stepType = ProcessStepType.forCode('general')
-				stepEvent.eventTitle = eventTitle
-				stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
-				stepEvent.jobConfig = config
+				def result = morpheusApiRequest(morpheusUrl, '/api/v1/systems', 'POST', authToken, systemPayload)
 
-				def insertRequest = new InsertProcessStepRequest(savedProcess, stepEvent)
-				InsertProcessStepResponse insertResponse = morpheusContext.services.process.insertProcessStep(insertRequest)
-
-				sendJson(exchange, 200, [
-					success  : true,
-					processId: savedProcess.id,
-					eventId  : insertResponse?.processEventId
-				])
+				if (result.success) {
+					sendJson(exchange, 200, [
+						success : true,
+						systemId: result.data?.id,
+						msg     : 'System created — OmegaSystemProvider lifecycle will bootstrap process steps'
+					])
+				} else {
+					sendJson(exchange, result.statusCode ?: 500, [
+						success: false,
+						msg    : result.msg ?: 'Failed to create system via Morpheus API',
+						errors : result.data?.errors
+					])
+				}
 			} catch (e) {
 				sendJson(exchange, 500, [success: false, msg: e.message])
 			}
@@ -175,9 +189,16 @@ class OmegaProcessJobRestServer {
 
 	/**
 	 * POST /process-jobs/create-multi-step
-	 * Creates a Process with multiple omega process job steps.
-	 * Body: { "workloadId": 123, "stepCount": 3, "stepConfigs": [ {...}, {...}, {...} ] }
-	 * Returns: { "success": true, "processId": 123, "steps": [ { "eventId": 456, "runOrder": 1 }, ... ] }
+	 * Creates an Omega system (bootstrapping a process), then inserts additional
+	 * omega process job steps into that process.
+	 *
+	 * Headers: Authorization: Bearer {morpheus-api-token}
+	 * Body: { "morpheusUrl": "https://localhost", "name": "multi-step-test",
+	 *         "extraStepCount": 2, "stepConfigs": [{...}, {...}] }
+	 *
+	 * The system creation itself adds steps via OmegaSystemProvider. The extraStepCount
+	 * adds additional steps beyond what the provider inserts.
+	 * Returns: { "success": true, "systemId": 123, "extraSteps": [...] }
 	 */
 	private class CreateMultiStepHandler implements HttpHandler {
 		@Override
@@ -188,53 +209,76 @@ class OmegaProcessJobRestServer {
 			}
 			try {
 				def body = parseBody(exchange)
-				Integer stepCount = (body.stepCount as Integer) ?: 3
+				def authToken = extractBearerToken(exchange)
+
+				if (!authToken) {
+					sendJson(exchange, 401, [success: false, msg: 'Authorization: Bearer <token> header required'])
+					return
+				}
+
+				def morpheusUrl = (body.morpheusUrl as String) ?: 'https://localhost'
+				def systemName = (body.name as String) ?: "omega-multi-${System.currentTimeMillis()}"
+				Integer extraStepCount = (body.extraStepCount as Integer) ?: 2
 				List stepConfigs = (body.stepConfigs as List) ?: []
-				Long workloadId = body.workloadId as Long
 
-				if (!workloadId) {
-					sendJson(exchange, 400, [success: false, msg: 'workloadId is required'])
+				// Create system first (bootstraps process with provider steps)
+				def typeAndLayout = resolveOmegaSystemTypeIds(morpheusUrl, authToken)
+				if (!typeAndLayout.success) {
+					sendJson(exchange, 500, [success: false, msg: typeAndLayout.msg])
 					return
 				}
 
-				Workload workload = morpheusContext.services.workload.get(workloadId)
-				if (!workload) {
-					sendJson(exchange, 404, [success: false, msg: "Workload ${workloadId} not found"])
+				def systemPayload = [
+					system: [
+						name  : systemName,
+						type  : [id: typeAndLayout.typeId],
+						layout: [id: typeAndLayout.layoutId]
+					]
+				]
+
+				def createResult = morpheusApiRequest(morpheusUrl, '/api/v1/systems', 'POST', authToken, systemPayload)
+				if (!createResult.success) {
+					sendJson(exchange, createResult.statusCode ?: 500, [
+						success: false,
+						msg    : createResult.msg ?: 'Failed to create system'
+					])
 					return
 				}
 
-				// Start a process via the proper API
-				def savedProcess = morpheusContext.services.process.startProcess(
-					workload, ProcessStepType.forCode('general'), null, 'omega-test-multi'
-				)
+				Long systemId = createResult.data?.id as Long
 
-				if (!savedProcess?.id) {
-					sendJson(exchange, 500, [success: false, msg: 'Failed to create process'])
-					return
-				}
+				// Find the process created for this system
+				def processResult = findSystemProcess(morpheusUrl, authToken, systemId)
+				Long processId = processResult?.processId
 
-				// Insert steps
-				def steps = []
-				for (int i = 0; i < stepCount; i++) {
-					def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
-					config = config ?: [sleepSeconds: 2, outputMessage: "Step ${i + 1} complete"]
+				// Insert extra steps if a process was found
+				def extraSteps = []
+				if (processId && extraStepCount > 0) {
+					def processModel = new ProcessModel()
+					processModel.id = processId
 
-					def stepEvent = new ProcessEvent()
-					stepEvent.stepType = ProcessStepType.forCode('general')
-					stepEvent.eventTitle = "Omega Step ${i + 1}"
-					stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
-					stepEvent.jobConfig = config
+					for (int i = 0; i < extraStepCount; i++) {
+						def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
+						config = config ?: [sleepSeconds: 2, outputMessage: "Extra step ${i + 1} complete"]
 
-					def insertRequest = new InsertProcessStepRequest(savedProcess, stepEvent)
-					InsertProcessStepResponse insertResponse = morpheusContext.services.process.insertProcessStep(insertRequest)
+						def stepEvent = new ProcessEvent()
+						stepEvent.stepType = ProcessStepType.forCode('general')
+						stepEvent.eventTitle = "Omega Extra Step ${i + 1}"
+						stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
+						stepEvent.jobConfig = config
 
-					steps << [eventId: insertResponse?.processEventId, runOrder: i + 1]
+						def insertRequest = new InsertProcessStepRequest(processModel, stepEvent)
+						InsertProcessStepResponse insertResponse = morpheusContext.services.process.insertProcessStep(insertRequest)
+						extraSteps << [eventId: insertResponse?.processEventId, runOrder: i + 1]
+					}
 				}
 
 				sendJson(exchange, 200, [
-					success  : true,
-					processId: savedProcess.id,
-					steps    : steps
+					success   : true,
+					systemId  : systemId,
+					processId : processId,
+					extraSteps: extraSteps,
+					msg       : "System created with ${extraStepCount} extra steps added"
 				])
 			} catch (e) {
 				sendJson(exchange, 500, [success: false, msg: e.message])
@@ -402,5 +446,105 @@ class OmegaProcessJobRestServer {
 		exchange.sendResponseHeaders(statusCode, bytes.length)
 		exchange.responseBody.write(bytes)
 		exchange.responseBody.close()
+	}
+
+	// --- Morpheus API helpers ---
+
+	private String extractBearerToken(HttpExchange exchange) {
+		def authHeader = exchange.requestHeaders.getFirst('Authorization') ?: ''
+		if (authHeader.startsWith('Bearer ')) {
+			return authHeader.substring(7).trim()
+		}
+		return null
+	}
+
+	/**
+	 * Look up the omega system type and layout IDs via the Morpheus API.
+	 */
+	private Map resolveOmegaSystemTypeIds(String morpheusUrl, String token) {
+		// Get system types and find omega.system
+		def typesResult = morpheusApiRequest(morpheusUrl, '/api/v1/system-types?max=200', 'GET', token)
+		if (!typesResult.success) {
+			return [success: false, msg: "Failed to fetch system types: ${typesResult.msg}"]
+		}
+
+		def omegaType = (typesResult.data?.systemTypes as List)?.find { it.code == 'omega.system' }
+		if (!omegaType) {
+			return [success: false, msg: 'omega.system type not found — is the plugin loaded?']
+		}
+
+		// Find the layout for this type
+		def layoutsResult = morpheusApiRequest(morpheusUrl, "/api/v1/system-types/${omegaType.id}/layouts?max=100", 'GET', token)
+		if (!layoutsResult.success) {
+			return [success: false, msg: "Failed to fetch layouts: ${layoutsResult.msg}"]
+		}
+
+		def omegaLayout = (layoutsResult.data?.layouts as List)?.find { it.code == 'omega.system.layout' }
+		if (!omegaLayout) {
+			return [success: false, msg: 'omega.system.layout not found']
+		}
+
+		return [success: true, typeId: omegaType.id, layoutId: omegaLayout.id]
+	}
+
+	/**
+	 * Find the most recent process for a given system.
+	 */
+	private Map findSystemProcess(String morpheusUrl, String token, Long systemId) {
+		def result = morpheusApiRequest(morpheusUrl, "/api/v1/processes?systemId=${systemId}&max=1&sort=id&order=desc", 'GET', token)
+		if (result.success && result.data?.processes) {
+			def process = (result.data.processes as List)?.first()
+			return [processId: process?.id as Long]
+		}
+		return [processId: null]
+	}
+
+	/**
+	 * Makes an HTTP request to the Morpheus API. Trusts all SSL certs (localhost dev).
+	 */
+	private Map morpheusApiRequest(String baseUrl, String path, String method, String token, Map body = null) {
+		try {
+			def url = new URL("${baseUrl}${path}")
+			def conn = url.openConnection()
+
+			// Trust all certs for localhost development
+			if (conn instanceof HttpsURLConnection) {
+				def trustAll = [
+					checkClientTrusted: { X509Certificate[] certs, String authType -> },
+					checkServerTrusted: { X509Certificate[] certs, String authType -> },
+					getAcceptedIssuers: { null }
+				] as X509TrustManager
+				def sc = SSLContext.getInstance('TLS')
+				sc.init(null, [trustAll] as TrustManager[], null)
+				((HttpsURLConnection) conn).SSLSocketFactory = sc.socketFactory
+				((HttpsURLConnection) conn).hostnameVerifier = { hostname, session -> true }
+			}
+
+			conn.requestMethod = method
+			conn.setRequestProperty('Authorization', "Bearer ${token}")
+			conn.setRequestProperty('Content-Type', 'application/json')
+			conn.connectTimeout = 30000
+			conn.readTimeout = 30000
+
+			if (body && method == 'POST') {
+				conn.doOutput = true
+				conn.outputStream.write(JsonOutput.toJson(body).getBytes('UTF-8'))
+				conn.outputStream.flush()
+			}
+
+			int responseCode = conn.responseCode
+			def responseStream = (responseCode >= 200 && responseCode < 400) ? conn.inputStream : conn.errorStream
+			def responseText = responseStream?.text ?: '{}'
+			def responseData = new JsonSlurper().parseText(responseText) as Map
+
+			return [
+				success   : responseCode >= 200 && responseCode < 400,
+				statusCode: responseCode,
+				data      : responseData,
+				msg       : responseData?.msg ?: responseData?.message
+			]
+		} catch (e) {
+			return [success: false, msg: "API request failed: ${e.message}", statusCode: 500]
+		}
 	}
 }
