@@ -5,6 +5,7 @@ import com.morpheusdata.core.Plugin
 import com.morpheusdata.model.Process as ProcessModel
 import com.morpheusdata.model.ProcessEvent
 import com.morpheusdata.model.ProcessStepType
+import com.morpheusdata.model.User
 import com.morpheusdata.model.process.InsertProcessStepRequest
 import com.morpheusdata.model.process.InsertProcessStepResponse
 import com.morpheusdata.model.process.ProcessJobExecutionRequest
@@ -33,6 +34,7 @@ import java.util.concurrent.Executors
  *   POST /process-jobs/execute           — directly invoke OmegaProcessJobProvider.execute()
  *   POST /process-jobs/create            — create a process with a single omega job step
  *   POST /process-jobs/create-multi-step — create a process with multiple omega job steps
+ *   POST /process-jobs/start-process     — start a standalone process on an existing workload
  *   POST /process-jobs/run               — dispatch a process step for execution
  *   POST /process-jobs/retry             — retry a failed process step
  *   GET  /process-jobs/status            — get status of a process and its events
@@ -60,6 +62,7 @@ class OmegaProcessJobRestServer {
 			server.executor = Executors.newFixedThreadPool(4)
 
 			server.createContext('/process-jobs/execute', new ExecuteHandler())
+			server.createContext('/process-jobs/start-process', new StartProcessHandler())
 			server.createContext('/process-jobs/create-multi-step', new CreateMultiStepHandler())
 			server.createContext('/process-jobs/create', new CreateHandler())
 			server.createContext('/process-jobs/run', new RunHandler())
@@ -109,6 +112,98 @@ class OmegaProcessJobRestServer {
 					success : result.success,
 					msg     : result.msg,
 					data    : result.data ? [nextOpts: result.data.nextOpts] : null
+				])
+			} catch (e) {
+				sendJson(exchange, 500, [success: false, msg: e.message])
+			}
+		}
+	}
+
+	/**
+	 * POST /process-jobs/start-process
+	 * Starts a standalone process on a pre-existing workload via
+	 * MorpheusProcessService#startProcess(), then inserts one or more omega
+	 * process job steps so the process is immediately usable.
+	 *
+	 * Body: {
+	 *   "workloadId": 123,                         // required
+	 *   "userId": 1,                               // optional, defaults to 1 (admin)
+	 *   "description": "...",                       // optional, process description
+	 *   "stepTypeCode": "general",                  // optional, defaults to "general"
+	 *   "stepCount": 2,                             // optional, defaults to 1
+	 *   "stepConfigs": [                            // optional, per-step overrides
+	 *     { "sleepSeconds": 3, "outputMessage": "Step 1 done" },
+	 *     { "sleepSeconds": 1, "outputMessage": "Step 2 done" }
+	 *   ]
+	 * }
+	 *
+	 * Returns: { "success": true, "processId": 456, "steps": [...] }
+	 */
+	private class StartProcessHandler implements HttpHandler {
+		@Override
+		void handle(HttpExchange exchange) {
+			if (exchange.requestMethod != 'POST') {
+				sendJson(exchange, 405, [success: false, msg: 'Method not allowed'])
+				return
+			}
+			try {
+				def body = parseBody(exchange)
+				Long workloadId = body.workloadId as Long
+				Long userId = (body.userId as Long) ?: 1L
+				String description = (body.description as String) ?: 'Omega dummy process'
+				String stepTypeCode = (body.stepTypeCode as String) ?: 'general'
+				Integer stepCount = (body.stepCount as Integer) ?: 1
+				List stepConfigs = (body.stepConfigs as List) ?: []
+
+				if (!workloadId) {
+					sendJson(exchange, 400, [success: false, msg: 'workloadId is required'])
+					return
+				}
+
+				def workload = morpheusContext.services.workload.get(workloadId)
+				if (!workload) {
+					sendJson(exchange, 404, [success: false, msg: "Workload ${workloadId} not found"])
+					return
+				}
+
+				User user = morpheusContext.services.admin.user.get(userId)
+				if (!user) {
+					sendJson(exchange, 404, [success: false, msg: "User ${userId} not found"])
+					return
+				}
+
+				ProcessModel process = morpheusContext.services.process.startProcess(
+					workload,
+					ProcessStepType.forCode(stepTypeCode),
+					user,
+					description
+				)
+
+				// Insert omega process job steps into the new process
+				def steps = []
+				if (process) {
+					def processService = morpheusContext.services.process
+					for (int i = 0; i < stepCount; i++) {
+						def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
+						config = config ?: [sleepSeconds: 2, outputMessage: "Step ${i + 1} complete"]
+
+						def stepEvent = new ProcessEvent()
+						stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
+						stepEvent.eventTitle = "Omega Step ${i + 1}"
+						stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
+						stepEvent.jobConfig = config
+
+						def insertRequest = new InsertProcessStepRequest(process, stepEvent)
+						InsertProcessStepResponse insertResponse = processService.insertProcessStep(insertRequest)
+						steps << [eventId: insertResponse?.processEventId, stepTitle: stepEvent.eventTitle]
+					}
+				}
+
+				sendJson(exchange, 200, [
+					success  : process != null,
+					processId: process?.id,
+					steps    : steps,
+					msg      : "Process started for workload ${workloadId} with ${stepCount} step(s)"
 				])
 			} catch (e) {
 				sendJson(exchange, 500, [success: false, msg: e.message])
@@ -347,8 +442,6 @@ class OmegaProcessJobRestServer {
 					return
 				}
 
-				// Use the existing Morpheus REST API retry endpoint internally
-				// Or dispatch directly — retry is the same as run, the platform handles status reset
 				def processModel = new ProcessModel()
 				processModel.id = processId
 
