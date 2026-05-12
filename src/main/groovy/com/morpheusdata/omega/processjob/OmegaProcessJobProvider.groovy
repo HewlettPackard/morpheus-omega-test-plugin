@@ -95,7 +95,7 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 
 	@Override
 	Boolean isCancelable() {
-		return false
+		return true
 	}
 
 	@Override
