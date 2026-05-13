@@ -19,6 +19,7 @@ import com.morpheusdata.web.PluginController
 import com.morpheusdata.web.Route
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.util.logging.Slf4j
 
 /**
  * Plugin controller that exposes REST endpoints for exercising OmegaProcessJobProvider
@@ -34,6 +35,7 @@ import groovy.json.JsonSlurper
  *
  * @since 0.4.0
  */
+@Slf4j
 class OmegaProcessJobController implements PluginController {
 
 	private MorpheusContext morpheusContext
@@ -49,12 +51,12 @@ class OmegaProcessJobController implements PluginController {
 	@Override
 	List<Route> getRoutes() {
 		return [
-			Route.build('/process-jobs/execute', 'execute', Permission.build('admin', 'full')),
-			Route.build('/process-jobs/start-process', 'startProcess', Permission.build('admin', 'full')),
-			Route.build('/process-jobs/run', 'run', Permission.build('admin', 'full')),
-			Route.build('/process-jobs/retry', 'retry', Permission.build('admin', 'full')),
-			Route.build('/process-jobs/status', 'status', Permission.build('admin', 'full')),
-			Route.build('/process-jobs/health', 'health', Permission.build('admin', 'full')),
+			Route.build('/process-jobs/execute', 'execute', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/start-process', 'startProcess', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/retry', 'retry', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/status', 'status', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/health', 'health', Permission.build('admin-appliance', 'full')),
 		]
 	}
 
@@ -221,15 +223,19 @@ class OmegaProcessJobController implements PluginController {
 				return resp
 			}
 
+			// Store input overrides in the provider so they're applied on next execute()
+			Map inputs = (body.inputs as Map) ?: (body.config as Map)
+			if (inputs) {
+				log.info("Storing overrides for eventId ${eventId} (type: ${eventId.getClass()}): ${inputs}")
+				processJobProvider.eventConfigOverrides[eventId] = inputs
+				log.info("Override map now has keys: ${processJobProvider.eventConfigOverrides.keySet()} (types: ${processJobProvider.eventConfigOverrides.keySet().collect{it.getClass()}})")
+			}
+
 			def processModel = new ProcessModel()
 			processModel.id = processId
 
 			def eventModel = new ProcessEvent()
 			eventModel.id = eventId
-			// If config overrides are provided, set them as jobConfig
-			if (body.config) {
-				eventModel.jobConfig = body.config as Map
-			}
 
 			def request = new RunProcessStepRequest(processModel, eventModel)
 			RunProcessStepResponse response = morpheusContext.services.process.runProcessStep(request)

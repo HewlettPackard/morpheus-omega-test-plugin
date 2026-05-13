@@ -33,6 +33,7 @@ import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
 import com.morpheusdata.omega.processjob.OmegaProcessJobController
 import com.morpheusdata.omega.processjob.OmegaProcessJobProvider
+import com.morpheusdata.omega.processjob.NoOpRenderer
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
@@ -81,6 +82,8 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(omegaProcessJobProvider)
 
 		// Register the controller for process job REST endpoints via ControllerProvider
+		// Set a no-op renderer to bypass the DynamicTemplateLoader bug in PluginManager
+		this.setRenderer(new NoOpRenderer())
 		def processJobController = new OmegaProcessJobController(this, this.morpheus, omegaProcessJobProvider)
 		this.controllers = [processJobController]
 	}

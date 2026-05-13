@@ -29,6 +29,9 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 	protected Plugin plugin
 	protected final LogWrapper log = LogWrapper.instance
 
+	// In-memory overrides for retry-with-inputs testing
+	Map<Long, Map> eventConfigOverrides = [:]
+
 	OmegaProcessJobProvider(Plugin plugin, MorpheusContext morpheusContext) {
 		super()
 		this.morpheusContext = morpheusContext
@@ -37,8 +40,18 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 
 	@Override
 	ServiceResponse<ProcessJobExecutionResponse> execute(ProcessJobExecutionRequest request) {
-		log.info("Omega ProcessJob executing for event ${request.processEventId}")
+		log.info("Omega ProcessJob executing for event ${request.processEventId}, overrides map keys: ${eventConfigOverrides.keySet()}")
 		def opts = request.opts ?: [:]
+		log.info("Original opts: ${opts}")
+
+		// Apply any in-memory overrides from retry-with-inputs
+		Map overrides = eventConfigOverrides.remove(request.processEventId)
+		if (overrides) {
+			log.info("Applying config overrides for event ${request.processEventId}: ${overrides}")
+			opts = opts + overrides
+		} else {
+			log.info("No overrides found for event ${request.processEventId}")
+		}
 
 		// Simulate work
 		Integer sleepSeconds = (opts.sleepSeconds as Integer) ?: 5
