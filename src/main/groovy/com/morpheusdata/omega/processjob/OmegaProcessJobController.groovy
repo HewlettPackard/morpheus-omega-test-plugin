@@ -53,6 +53,7 @@ class OmegaProcessJobController implements PluginController {
 		return [
 			Route.build('/process-jobs/execute', 'execute', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/start-process', 'startProcess', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/add-steps', 'addSteps', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/retry', 'retry', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/status', 'status', Permission.build('admin-appliance', 'full')),
@@ -115,8 +116,8 @@ class OmegaProcessJobController implements PluginController {
 			Long userId = (body.userId as Long) ?: 1L
 			String description = (body.description as String) ?: 'Omega dummy process'
 			String stepTypeCode = (body.stepTypeCode as String) ?: 'general'
-			Integer stepCount = (body.stepCount as Integer) ?: 1
 			List stepConfigs = (body.stepConfigs as List) ?: []
+			Integer stepCount = body.containsKey('stepCount') ? (body.stepCount as Integer) : stepConfigs.size()
 
 			if (!workloadId) {
 				def resp = JsonResponse.of([success: false, msg: 'workloadId is required'])
@@ -170,6 +171,58 @@ class OmegaProcessJobController implements PluginController {
 				processId: process?.id,
 				steps    : steps,
 				msg      : "Process started for workload ${workloadId} with ${stepCount} step(s)"
+			])
+		} catch (e) {
+			return errorResponse(e.message)
+		}
+	}
+
+	/**
+	 * POST /plugin/process-jobs/add-steps
+	 * Adds one or more steps to an existing process.
+	 */
+	def addSteps(ViewModel<Map> model) {
+		try {
+			Map body = model.object ?: [:]
+			Long processId = body.processId as Long
+			List stepConfigs = (body.stepConfigs as List) ?: []
+			String stepTypeCode = (body.stepTypeCode as String) ?: 'general'
+
+			if (!processId) {
+				def resp = JsonResponse.of([success: false, msg: 'processId is required'])
+				resp.status = 400
+				return resp
+			}
+			if (!stepConfigs) {
+				def resp = JsonResponse.of([success: false, msg: 'stepConfigs is required'])
+				resp.status = 400
+				return resp
+			}
+
+			def processModel = new ProcessModel()
+			processModel.id = processId
+
+			def processService = morpheusContext.services.process
+			def steps = []
+			stepConfigs.eachWithIndex { cfg, i ->
+				def config = (cfg as Map) ?: [sleepSeconds: 5]
+
+				def stepEvent = new ProcessEvent()
+				stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
+				stepEvent.eventTitle = (config.stepTitle as String) ?: "Omega Step ${i + 1}"
+				stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
+				stepEvent.jobConfig = config
+
+				def insertRequest = new InsertProcessStepRequest(processModel, stepEvent)
+				InsertProcessStepResponse insertResponse = processService.insertProcessStep(insertRequest)
+				steps << [eventId: insertResponse?.processEventId, stepTitle: stepEvent.eventTitle]
+			}
+
+			return JsonResponse.of([
+				success  : true,
+				processId: processId,
+				steps    : steps,
+				msg      : "Added ${steps.size()} step(s) to process ${processId}"
 			])
 		} catch (e) {
 			return errorResponse(e.message)

@@ -1,0 +1,251 @@
+<div id="process-job-tab" style="padding: 20px;">
+	<h3>Process Job Test Runner</h3>
+	<p>Create a process with multiple steps, then run each step individually to test retry, cancel, and execution features.</p>
+
+	<!-- Step 1: Start a Process -->
+	<fieldset id="start-section" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+		<legend><strong>1. Start Process</strong></legend>
+		<div style="margin-bottom: 10px;">
+			<label for="workload-select"><strong>Workload:</strong></label>
+			<select id="workload-select" style="width: 300px; padding: 5px;">
+				{{#each containers}}
+				<option value="{{id}}">{{name}} (ID: {{id}})</option>
+				{{/each}}
+			</select>
+		</div>
+		<button type="button" id="start-process-btn" style="padding: 6px 16px; background: #00b388; color: white; border: none; border-radius: 4px; cursor: pointer;">
+			Start Empty Process
+		</button>
+		<span id="process-info" style="margin-left: 15px; color: #666;"></span>
+	</fieldset>
+
+	<!-- Step 2: Add Steps -->
+	<fieldset id="steps-section" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; opacity: 0.5;" disabled>
+		<legend><strong>2. Add Steps</strong></legend>
+
+		<div style="margin-bottom: 10px; display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+			<div>
+				<label><small>Simulate Failure</small></label><br>
+				<input type="checkbox" id="step-simulate-failure">
+			</div>
+			<div>
+				<label><small>Succeed On Attempt</small></label><br>
+				<input type="number" id="step-succeed-on-attempt" value="0" min="0" style="width: 60px; padding: 3px;">
+			</div>
+			<div>
+				<label><small>Sleep Seconds</small></label><br>
+				<input type="number" id="step-sleep-seconds" value="5" min="1" style="width: 60px; padding: 3px;">
+			</div>
+			<div>
+				<label><small>Output Message</small></label><br>
+				<input type="text" id="step-output-message" value="" style="width: 200px; padding: 3px;" placeholder="(optional)">
+			</div>
+			<div>
+				<button type="button" id="add-step-btn" style="padding: 6px 16px; background: #0072c6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+					+ Add Step
+				</button>
+			</div>
+		</div>
+
+		<table id="steps-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; display: none;">
+			<thead>
+				<tr style="background: #f0f0f0; text-align: left;">
+					<th style="padding: 8px; border: 1px solid #ddd;">#</th>
+					<th style="padding: 8px; border: 1px solid #ddd;">Event ID</th>
+					<th style="padding: 8px; border: 1px solid #ddd;">Config</th>
+					<th style="padding: 8px; border: 1px solid #ddd;">Status</th>
+					<th style="padding: 8px; border: 1px solid #ddd;">Action</th>
+				</tr>
+			</thead>
+			<tbody id="steps-body">
+			</tbody>
+		</table>
+	</fieldset>
+
+	<!-- Result log -->
+	<fieldset style="border: 1px solid #ccc; padding: 15px;">
+		<legend><strong>Log</strong></legend>
+		<pre id="log-output" style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 12px; margin: 0;">Ready.</pre>
+	</fieldset>
+</div>
+
+<script nonce="{{nonce}}">
+(function() {
+	var csrfMeta = document.querySelector('meta[name="_csrf"]');
+	var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+	var processId = null;
+	var steps = []; // [{eventId, config, status}]
+
+	var logEl = document.getElementById('log-output');
+	var stepsSection = document.getElementById('steps-section');
+	var stepsTable = document.getElementById('steps-table');
+	var stepsBody = document.getElementById('steps-body');
+	var processInfo = document.getElementById('process-info');
+
+	function log(msg) {
+		var ts = new Date().toLocaleTimeString();
+		logEl.textContent += '\n[' + ts + '] ' + msg;
+		logEl.scrollTop = logEl.scrollHeight;
+	}
+
+	function apiPost(path, body) {
+		return fetch('/plugin/process-jobs/' + path, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+			body: JSON.stringify(body)
+		}).then(function(r) { return r.json(); });
+	}
+
+	function apiGet(path) {
+		return fetch('/plugin/process-jobs/' + path).then(function(r) { return r.json(); });
+	}
+
+	function renderSteps() {
+		stepsTable.style.display = steps.length ? 'table' : 'none';
+		stepsBody.innerHTML = '';
+		steps.forEach(function(step, idx) {
+			var tr = document.createElement('tr');
+			var configStr = [];
+			if (step.config.simulateFailure === 'true') configStr.push('fail');
+			if (step.config.succeedOnAttempt > 0) configStr.push('succeed@' + step.config.succeedOnAttempt);
+			configStr.push(step.config.sleepSeconds + 's');
+			if (step.config.outputMessage) configStr.push('"' + step.config.outputMessage + '"');
+
+			var statusColor = step.status === 'complete' ? '#2d7d2d' : step.status === 'failed' ? '#c92a2a' : step.status === 'running' ? '#0072c6' : '#666';
+
+			tr.innerHTML = '<td style="padding: 6px; border: 1px solid #ddd;">' + (idx + 1) + '</td>'
+				+ '<td style="padding: 6px; border: 1px solid #ddd;">' + step.eventId + '</td>'
+				+ '<td style="padding: 6px; border: 1px solid #ddd; font-size: 12px;">' + configStr.join(', ') + '</td>'
+				+ '<td style="padding: 6px; border: 1px solid #ddd; color: ' + statusColor + ';">' + step.status + '</td>'
+				+ '<td style="padding: 6px; border: 1px solid #ddd;">'
+				+ (step.status === 'pending' || step.status === 'failed' ? '<button class="run-step-btn" data-idx="' + idx + '" style="padding: 4px 12px; background: #00b388; color: white; border: none; border-radius: 3px; cursor: pointer;">Run</button>' : '')
+				+ (step.status === 'running' || step.status === 'waiting' || step.status === 'queued' ? '<button class="refresh-btn" data-idx="' + idx + '" style="padding: 4px 12px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer;">Refresh</button>' : '')
+				+ '</td>';
+			stepsBody.appendChild(tr);
+		});
+
+		// Bind run buttons
+		document.querySelectorAll('.run-step-btn').forEach(function(btn) {
+			btn.addEventListener('click', function() { runStep(parseInt(this.dataset.idx)); });
+		});
+		document.querySelectorAll('.refresh-btn').forEach(function(btn) {
+			btn.addEventListener('click', function() { refreshStatus(); });
+		});
+	}
+
+	// Start Process
+	document.getElementById('start-process-btn').addEventListener('click', function() {
+		var workloadId = parseInt(document.getElementById('workload-select').value);
+		var btn = this;
+		btn.disabled = true;
+		log('Starting process for workload ' + workloadId + '...');
+
+		apiPost('start-process', { workloadId: workloadId, stepConfigs: [] })
+			.then(function(data) {
+				if (data.success) {
+					processId = data.processId;
+					processInfo.textContent = 'Process ID: ' + processId;
+					processInfo.style.color = '#2d7d2d';
+					stepsSection.disabled = false;
+					stepsSection.style.opacity = '1';
+					log('Process ' + processId + ' started.');
+				} else {
+					log('ERROR: ' + (data.msg || 'Failed to start process'));
+					btn.disabled = false;
+				}
+			})
+			.catch(function(err) {
+				log('ERROR: ' + err.message);
+				btn.disabled = false;
+			});
+	});
+
+	// Add Step
+	document.getElementById('add-step-btn').addEventListener('click', function() {
+		if (!processId) return;
+
+		var config = {
+			simulateFailure: document.getElementById('step-simulate-failure').checked ? 'true' : 'false',
+			succeedOnAttempt: parseInt(document.getElementById('step-succeed-on-attempt').value) || 0,
+			sleepSeconds: parseInt(document.getElementById('step-sleep-seconds').value) || 5
+		};
+		var msg = document.getElementById('step-output-message').value;
+		if (msg) config.outputMessage = msg;
+
+		var btn = this;
+		btn.disabled = true;
+		log('Adding step to process ' + processId + '...');
+
+		apiPost('add-steps', { processId: processId, stepConfigs: [config] })
+			.then(function(data) {
+				btn.disabled = false;
+				if (data.success && data.steps && data.steps.length > 0) {
+					var newStep = data.steps[data.steps.length - 1];
+					steps.push({ eventId: newStep.eventId, config: config, status: 'pending' });
+					log('Step added: event ' + newStep.eventId);
+					renderSteps();
+				} else {
+					log('ERROR: ' + (data.msg || 'Failed to add step'));
+				}
+			})
+			.catch(function(err) {
+				btn.disabled = false;
+				log('ERROR: ' + err.message);
+			});
+	});
+
+	// Run a specific step
+	function runStep(idx) {
+		var step = steps[idx];
+		if (!step) return;
+
+		log('Running step ' + (idx + 1) + ' (event ' + step.eventId + ')...');
+		step.status = 'queued';
+		renderSteps();
+
+		apiPost('run', { processId: processId, eventId: step.eventId })
+			.then(function(data) {
+				if (data.success) {
+					step.status = 'running';
+					log('Step ' + (idx + 1) + ' dispatched. Auto-refreshing in 3s...');
+					// Auto-refresh after delay to pick up completion
+					setTimeout(refreshStatus, 3000);
+					setTimeout(refreshStatus, 8000);
+					setTimeout(refreshStatus, 15000);
+				} else {
+					step.status = 'failed';
+					log('ERROR dispatching step ' + (idx + 1) + ': ' + (data.msg || 'unknown'));
+				}
+				renderSteps();
+			})
+			.catch(function(err) {
+				step.status = 'failed';
+				log('ERROR: ' + err.message);
+				renderSteps();
+			});
+	}
+
+	// Refresh all step statuses using Morpheus API
+	function refreshStatus() {
+		if (!processId) return;
+		fetch('/api/processes/' + processId, {
+			headers: { 'X-XSRF-TOKEN': csrfToken }
+		})
+		.then(function(r) { return r.json(); })
+		.then(function(data) {
+			if (data.process && data.process.events) {
+				data.process.events.forEach(function(evt) {
+					var match = steps.find(function(s) { return s.eventId === evt.id; });
+					if (match) {
+						match.status = evt.status || match.status;
+					}
+				});
+				renderSteps();
+				log('Status refreshed.');
+			}
+		})
+		.catch(function(err) { log('Refresh error: ' + err.message); });
+	}
+})();
+</script>
