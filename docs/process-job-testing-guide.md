@@ -1,6 +1,6 @@
 # Process Job REST Testing Guide
 
-This guide covers how to use the Omega Process Job REST server (`127.0.0.1:8090`) to set up
+This guide covers how to use the Omega Process Job plugin controller endpoints to set up
 and manually test process-job features: auto-retry, retry with inputs, and cancelable steps.
 
 ## Prerequisites
@@ -9,10 +9,10 @@ and manually test process-job features: auto-retry, retry with inputs, and cance
 2. A pre-existing instance/workload (note the workload ID)
 3. The omega plugin JAR built and deployed (`./gradlew shadowJar`)
 
-Verify the REST server is running:
+Verify the plugin controller is responding:
 
 ```bash
-curl -s http://127.0.0.1:8090/process-jobs/health
+curl -s https://localhost/plugin/process-jobs/health
 # {"status":"ok","provider":"omega.process-job"}
 ```
 
@@ -45,7 +45,7 @@ Each step accepts a `jobConfig` map that controls behavior:
 
 ```bash
 # Create a process with a step that fails initially but succeeds on retry attempt 2
-curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
+curl -s -X POST https://localhost/plugin/process-jobs/start-process \
   -H 'Content-Type: application/json' \
   -d '{
     "workloadId": 22,
@@ -58,7 +58,7 @@ curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
 # Note the processId and eventId from the response
 
 # Dispatch the step
-curl -s -X POST http://127.0.0.1:8090/process-jobs/run \
+curl -s -X POST https://localhost/plugin/process-jobs/run \
   -H 'Content-Type: application/json' \
   -d '{"processId": <PROCESS_ID>, "eventId": <EVENT_ID>}'
 ```
@@ -80,7 +80,7 @@ shows a "Retry" button with the provider's option types as a form.
 
 ```bash
 # Create a step that always fails (succeedOnAttempt=0 means never auto-succeed)
-curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
+curl -s -X POST https://localhost/plugin/process-jobs/start-process \
   -H 'Content-Type: application/json' \
   -d '{
     "workloadId": 22,
@@ -91,7 +91,7 @@ curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
   }'
 
 # Dispatch the step
-curl -s -X POST http://127.0.0.1:8090/process-jobs/run \
+curl -s -X POST https://localhost/plugin/process-jobs/run \
   -H 'Content-Type: application/json' \
   -d '{"processId": <PROCESS_ID>, "eventId": <EVENT_ID>}'
 ```
@@ -118,7 +118,7 @@ curl -s -X POST http://127.0.0.1:8090/process-jobs/run \
 
 ```bash
 # Create a step with a long sleep (300s gives plenty of time to test the cancel button)
-curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
+curl -s -X POST https://localhost/plugin/process-jobs/start-process \
   -H 'Content-Type: application/json' \
   -d '{
     "workloadId": 22,
@@ -129,7 +129,7 @@ curl -s -X POST http://127.0.0.1:8090/process-jobs/start-process \
   }'
 
 # Dispatch the step
-curl -s -X POST http://127.0.0.1:8090/process-jobs/run \
+curl -s -X POST https://localhost/plugin/process-jobs/run \
   -H 'Content-Type: application/json' \
   -d '{"processId": <PROCESS_ID>, "eventId": <EVENT_ID>}'
 ```
@@ -149,7 +149,7 @@ curl -s -X POST http://127.0.0.1:8090/process-jobs/run \
 
 ## Endpoint Reference
 
-### POST /process-jobs/start-process
+### POST /plugin/process-jobs/start-process
 
 Creates a new process on an existing workload and optionally inserts steps.
 
@@ -180,7 +180,7 @@ Creates a new process on an existing workload and optionally inserts steps.
 }
 ```
 
-### POST /process-jobs/run
+### POST /plugin/process-jobs/run
 
 Dispatches an existing process step for execution via the RabbitMQ pipeline.
 
@@ -189,7 +189,7 @@ Dispatches an existing process step for execution via the RabbitMQ pipeline.
 {"processId": 330, "eventId": 669}
 ```
 
-### POST /process-jobs/retry
+### POST /plugin/process-jobs/retry
 
 Re-dispatches a failed step. Note: config overrides in the body are set on the DTO
 but the platform re-reads the DB record for execution, so modifying inputs must be done
@@ -200,11 +200,11 @@ via the UI retry flow (which uses `stepInputs`).
 {"processId": 330, "eventId": 669, "config": {"simulateFailure": "false"}}
 ```
 
-### GET /process-jobs/status?processId=330
+### GET /plugin/process-jobs/status?processId=330
 
 Returns process details and event list.
 
-### GET /process-jobs/health
+### GET /plugin/process-jobs/health
 
 Returns server status.
 
