@@ -53,6 +53,7 @@ class OmegaProcessJobController implements PluginController {
 		return [
 			Route.build('/process-jobs/execute', 'execute', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/start-process', 'startProcess', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/end-process', 'endProcess', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/add-steps', 'addSteps', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/retry', 'retry', Permission.build('admin-appliance', 'full')),
@@ -153,6 +154,7 @@ class OmegaProcessJobController implements PluginController {
 				for (int i = 0; i < stepCount; i++) {
 					def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
 					config = config ?: [sleepSeconds: 2, outputMessage: "Step ${i + 1} complete"]
+					config.processId = process.id
 
 					def stepEvent = new ProcessEvent()
 					stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
@@ -171,6 +173,38 @@ class OmegaProcessJobController implements PluginController {
 				processId: process?.id,
 				steps    : steps,
 				msg      : "Process started for workload ${workloadId} with ${stepCount} step(s)"
+			])
+		} catch (e) {
+			return errorResponse(e.message)
+		}
+	}
+
+	/**
+	 * POST /plugin/process-jobs/end-process
+	 * Ends/closes a running process.
+	 */
+	def endProcess(ViewModel<Map> model) {
+		try {
+			Map body = model.object ?: [:]
+			Long processId = body.processId as Long
+			String status = (body.status as String) ?: 'complete'
+			String output = (body.output as String) ?: 'Process ended by user'
+
+			if (!processId) {
+				def resp = JsonResponse.of([success: false, msg: 'processId is required'])
+				resp.status = 400
+				return resp
+			}
+
+			def process = new ProcessModel()
+			process.id = processId
+
+			morpheusContext.services.process.endProcess(process, status, output).blockingGet()
+
+			return JsonResponse.of([
+				success  : true,
+				processId: processId,
+				msg      : "Process ${processId} ended with status '${status}'"
 			])
 		} catch (e) {
 			return errorResponse(e.message)
@@ -206,6 +240,7 @@ class OmegaProcessJobController implements PluginController {
 			def steps = []
 			stepConfigs.eachWithIndex { cfg, i ->
 				def config = (cfg as Map) ?: [sleepSeconds: 5]
+				config.processId = processId
 
 				def stepEvent = new ProcessEvent()
 				stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
