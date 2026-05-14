@@ -1,0 +1,418 @@
+<div id="process-job-tab">
+	<div class="info-section">
+		<div class="info-title">Process Job Test Runner</div>
+		<div class="info-detail">
+			<p class="help-block">Create a process with multiple steps, then run each step individually to test retry, cancel, and execution features.</p>
+		</div>
+	</div>
+
+	<!-- Step 1: Start a Process -->
+	<div class="info-section" id="start-section">
+		<div class="info-title">1. Start Process</div>
+		<div class="info-detail">
+			<div class="row">
+				<div class="col-sm-6">
+					<h5>New Process</h5>
+					<div class="form-group">
+						<label for="workload-select">Workload</label>
+						<select id="workload-select" class="form-control">
+							{{#each containers}}
+							<option value="{{id}}">{{name}} (ID: {{id}})</option>
+							{{/each}}
+						</select>
+					</div>
+					<div class="form-group">
+						<button type="button" id="start-process-btn" class="btn btn-primary">
+							Start Empty Process
+						</button>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<h5>Use Existing Process</h5>
+					<div class="form-group">
+						<label for="existing-process-id">Process ID</label>
+						<input type="number" id="existing-process-id" class="form-control" placeholder="Enter process ID">
+					</div>
+					<div class="form-group">
+						<button type="button" id="use-process-btn" class="btn btn-default">
+							Use Selected Process
+						</button>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<button type="button" id="end-process-btn" class="btn btn-default" disabled>
+					End Process
+				</button>
+				<span id="process-info" class="help-inline"></span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Step 2: Add Steps -->
+	<div class="info-section" id="steps-section">
+		<div class="info-title">2. Add Steps</div>
+		<div class="info-detail" id="steps-detail">
+			<div class="row" id="step-config-row">
+				<div class="col-sm-1">
+					<div class="form-group">
+						<label>Simulate Failure</label>
+						<div style="margin-top:6px;">
+							<input type="checkbox" id="step-simulate-failure" disabled>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-1">
+					<div class="form-group">
+						<label>User Retryable</label>
+						<div style="margin-top:6px;">
+							<input type="checkbox" id="step-retryable" checked disabled>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-1">
+					<div class="form-group">
+						<label>Retries</label>
+						<input type="number" id="step-retry-count" value="3" min="0" max="10" class="form-control" disabled>
+					</div>
+				</div>
+				<div class="col-sm-1">
+					<div class="form-group">
+						<label>User Cancelable</label>
+						<div style="margin-top:6px;">
+							<input type="checkbox" id="step-cancelable" checked disabled>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-2">
+					<div class="form-group">
+						<label>Succeed On Attempt</label>
+						<input type="number" id="step-succeed-on-attempt" value="0" min="0" class="form-control" disabled>
+					</div>
+				</div>
+				<div class="col-sm-2">
+					<div class="form-group">
+						<label>Sleep Seconds</label>
+						<input type="number" id="step-sleep-seconds" value="5" min="1" class="form-control" disabled>
+					</div>
+				</div>
+				<div class="col-sm-3">
+					<div class="form-group">
+						<label>Output Message</label>
+						<input type="text" id="step-output-message" value="" class="form-control" placeholder="(optional)" disabled>
+					</div>
+				</div>
+				<div class="col-sm-2">
+					<div class="form-group">
+						<label>&nbsp;</label>
+						<div>
+							<button type="button" id="add-step-btn" class="btn btn-default" disabled>
+								+ Add Step
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<table id="steps-table" class="table" style="display: none;">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Event ID</th>
+						<th>Config</th>
+						<th>Status</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody id="steps-body">
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<!-- Result log -->
+	<div class="info-section">
+		<div class="info-title">Log</div>
+		<div class="info-detail">
+			<pre id="log-output" class="code-block">Ready.</pre>
+		</div>
+	</div>
+</div>
+
+<script nonce="{{nonce}}">
+(function() {
+	var csrfMeta = document.querySelector('meta[name="_csrf"]');
+	var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+	var processId = null;
+	var steps = []; // [{eventId, config, status}]
+
+	var logEl = document.getElementById('log-output');
+	var stepsTable = document.getElementById('steps-table');
+	var stepsBody = document.getElementById('steps-body');
+	var processInfo = document.getElementById('process-info');
+	var stepConfigRow = document.getElementById('step-config-row');
+
+	function log(msg) {
+		var ts = new Date().toLocaleTimeString();
+		logEl.textContent += '\n[' + ts + '] ' + msg;
+		logEl.scrollTop = logEl.scrollHeight;
+	}
+
+	function apiPost(path, body) {
+		return fetch('/plugin/process-jobs/' + path, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+			body: JSON.stringify(body)
+		}).then(function(r) { return r.json(); });
+	}
+
+	function enableStepInputs(enabled) {
+		var inputs = stepConfigRow.querySelectorAll('input, button');
+		inputs.forEach(function(el) { el.disabled = !enabled; });
+	}
+
+	function renderSteps() {
+		stepsTable.style.display = steps.length ? 'table' : 'none';
+		stepsBody.innerHTML = '';
+		steps.forEach(function(step, idx) {
+			var tr = document.createElement('tr');
+			var configStr = [];
+			if (step.config.simulateFailure === 'true') configStr.push('fail');
+			if (step.config.isRetryable === 'true') configStr.push('retry(' + (step.config.retryCount || 3) + ')');
+			if (step.config.isCancelable === 'true') configStr.push('cancel');
+			if (step.config.succeedOnAttempt > 0) configStr.push('succeed@' + step.config.succeedOnAttempt);
+			configStr.push(step.config.sleepSeconds + 's');
+			if (step.config.outputMessage) configStr.push('"' + step.config.outputMessage + '"');
+
+			var statusClass = '';
+			if (step.status === 'complete') statusClass = 'text-success';
+			else if (step.status === 'failed') statusClass = 'text-danger';
+			else if (step.status === 'running' || step.status === 'queued') statusClass = 'text-info';
+			else if (step.status === 'waiting') statusClass = 'text-warning';
+
+			tr.innerHTML = '<td>' + (idx + 1) + '</td>'
+				+ '<td>' + step.eventId + '</td>'
+				+ '<td><small>' + configStr.join(', ') + '</small></td>'
+				+ '<td class="' + statusClass + '">' + step.status + '</td>'
+				+ '<td>'
+				+ (step.status === 'pending' || step.status === 'failed' ? '<button class="run-step-btn btn btn-primary btn-sm" data-idx="' + idx + '">Run</button>' : '')
+				+ (step.status === 'running' || step.status === 'waiting' || step.status === 'queued' ? '<button class="refresh-btn btn btn-default btn-sm" data-idx="' + idx + '">Refresh</button>' : '')
+				+ '</td>';
+			stepsBody.appendChild(tr);
+		});
+
+		// Bind run buttons
+		document.querySelectorAll('.run-step-btn').forEach(function(btn) {
+			btn.addEventListener('click', function() { runStep(parseInt(this.dataset.idx)); });
+		});
+		document.querySelectorAll('.refresh-btn').forEach(function(btn) {
+			btn.addEventListener('click', function() { refreshStatus(); });
+		});
+	}
+
+	function activateProcess(id) {
+		processId = id;
+		processInfo.textContent = 'Process ID: ' + processId;
+		processInfo.className = 'help-inline text-success';
+		enableStepInputs(true);
+		document.getElementById('start-process-btn').disabled = true;
+		document.getElementById('use-process-btn').disabled = true;
+		document.getElementById('end-process-btn').disabled = false;
+	}
+
+	function deactivateProcess() {
+		processId = null;
+		steps = [];
+		processInfo.textContent = '';
+		processInfo.className = 'help-inline';
+		enableStepInputs(false);
+		document.getElementById('start-process-btn').disabled = false;
+		document.getElementById('use-process-btn').disabled = false;
+		document.getElementById('end-process-btn').disabled = true;
+		renderSteps();
+	}
+
+	// Start Process
+	document.getElementById('start-process-btn').addEventListener('click', function() {
+		var workloadId = parseInt(document.getElementById('workload-select').value);
+		var btn = this;
+		btn.disabled = true;
+		log('Starting process for workload ' + workloadId + '...');
+
+		apiPost('start-process', { workloadId: workloadId, stepConfigs: [] })
+			.then(function(data) {
+				if (data.success) {
+					activateProcess(data.processId);
+					log('Process ' + data.processId + ' started.');
+				} else {
+					log('ERROR: ' + (data.msg || 'Failed to start process'));
+					btn.disabled = false;
+				}
+			})
+			.catch(function(err) {
+				log('ERROR: ' + err.message);
+				btn.disabled = false;
+			});
+	});
+
+	// Use Existing Process
+	document.getElementById('use-process-btn').addEventListener('click', function() {
+		var id = parseInt(document.getElementById('existing-process-id').value);
+		if (!id) {
+			log('ERROR: Enter a valid process ID');
+			return;
+		}
+		var btn = this;
+		btn.disabled = true;
+		log('Loading process ' + id + '...');
+
+		fetch('/api/processes/' + id, {
+			headers: { 'X-XSRF-TOKEN': csrfToken }
+		})
+		.then(function(r) { return r.json(); })
+		.then(function(data) {
+			if (data.process) {
+				var status = data.process.status;
+				if (status === 'complete' || status === 'failed' || status === 'cancelled') {
+					log('ERROR: Process ' + id + ' is in terminal state: ' + status);
+					btn.disabled = false;
+					return;
+				}
+				activateProcess(id);
+				// Load existing steps from process events
+				if (data.process.events) {
+					data.process.events.forEach(function(evt) {
+						steps.push({
+							eventId: evt.id,
+							config: evt.config || {},
+							status: evt.status || 'pending'
+						});
+					});
+					renderSteps();
+				}
+				log('Using existing process ' + id + ' (status: ' + status + ', ' + steps.length + ' existing steps)');
+			} else {
+				log('ERROR: Process ' + id + ' not found');
+				btn.disabled = false;
+			}
+		})
+		.catch(function(err) {
+			log('ERROR: ' + err.message);
+			btn.disabled = false;
+		});
+	});
+
+	// End Process
+	document.getElementById('end-process-btn').addEventListener('click', function() {
+		if (!processId) return;
+		var btn = this;
+		btn.disabled = true;
+		log('Ending process ' + processId + '...');
+
+		apiPost('end-process', { processId: processId })
+			.then(function(data) {
+				if (data.success) {
+					log('Process ' + processId + ' ended.');
+					deactivateProcess();
+				} else {
+					log('ERROR: ' + (data.msg || 'Failed to end process'));
+					btn.disabled = false;
+				}
+			})
+			.catch(function(err) {
+				log('ERROR: ' + err.message);
+				btn.disabled = false;
+			});
+	});
+
+	// Add Step
+	document.getElementById('add-step-btn').addEventListener('click', function() {
+		if (!processId) return;
+
+		var config = {
+			simulateFailure: document.getElementById('step-simulate-failure').checked ? 'true' : 'false',
+			isRetryable: document.getElementById('step-retryable').checked ? 'true' : 'false',
+			retryCount: parseInt(document.getElementById('step-retry-count').value) || 3,
+			isCancelable: document.getElementById('step-cancelable').checked ? 'true' : 'false',
+			succeedOnAttempt: parseInt(document.getElementById('step-succeed-on-attempt').value) || 0,
+			sleepSeconds: parseInt(document.getElementById('step-sleep-seconds').value) || 5
+		};
+		var msg = document.getElementById('step-output-message').value;
+		if (msg) config.outputMessage = msg;
+
+		var btn = this;
+		btn.disabled = true;
+		log('Adding step to process ' + processId + '...');
+
+		apiPost('add-steps', { processId: processId, stepConfigs: [config] })
+			.then(function(data) {
+				btn.disabled = false;
+				if (data.success && data.steps && data.steps.length > 0) {
+					var newStep = data.steps[data.steps.length - 1];
+					steps.push({ eventId: newStep.eventId, config: config, status: 'pending' });
+					log('Step added: event ' + newStep.eventId);
+					renderSteps();
+				} else {
+					log('ERROR: ' + (data.msg || 'Failed to add step'));
+				}
+			})
+			.catch(function(err) {
+				btn.disabled = false;
+				log('ERROR: ' + err.message);
+			});
+	});
+
+	// Run a specific step
+	function runStep(idx) {
+		var step = steps[idx];
+		if (!step) return;
+
+		log('Running step ' + (idx + 1) + ' (event ' + step.eventId + ')...');
+		step.status = 'queued';
+		renderSteps();
+
+		apiPost('run', { processId: processId, eventId: step.eventId })
+			.then(function(data) {
+				if (data.success) {
+					step.status = 'running';
+					log('Step ' + (idx + 1) + ' dispatched. Auto-refreshing...');
+					setTimeout(refreshStatus, 3000);
+					setTimeout(refreshStatus, 8000);
+					setTimeout(refreshStatus, 15000);
+				} else {
+					step.status = 'failed';
+					log('ERROR dispatching step ' + (idx + 1) + ': ' + (data.msg || 'unknown'));
+				}
+				renderSteps();
+			})
+			.catch(function(err) {
+				step.status = 'failed';
+				log('ERROR: ' + err.message);
+				renderSteps();
+			});
+	}
+
+	// Refresh all step statuses using Morpheus API
+	function refreshStatus() {
+		if (!processId) return;
+		fetch('/api/processes/' + processId, {
+			headers: { 'X-XSRF-TOKEN': csrfToken }
+		})
+		.then(function(r) { return r.json(); })
+		.then(function(data) {
+			if (data.process && data.process.events) {
+				data.process.events.forEach(function(evt) {
+					var match = steps.find(function(s) { return s.eventId === evt.id; });
+					if (match) {
+						match.status = evt.status || match.status;
+					}
+				});
+				renderSteps();
+				log('Status refreshed.');
+			}
+		})
+		.catch(function(err) { log('Refresh error: ' + err.message); });
+	}
+})();
+</script>

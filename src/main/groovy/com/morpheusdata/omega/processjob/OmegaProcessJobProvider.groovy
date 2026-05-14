@@ -4,6 +4,9 @@ import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.providers.ProcessJobProvider
 import com.morpheusdata.model.OptionType
+import com.morpheusdata.model.Process
+import com.morpheusdata.model.ProcessStepType
+import com.morpheusdata.model.ProcessStepUpdate
 import com.morpheusdata.model.process.ProcessJobExecutionRequest
 import com.morpheusdata.model.process.ProcessJobExecutionResponse
 import com.morpheusdata.omega.logging.LogWrapper
@@ -20,7 +23,6 @@ import com.morpheusdata.response.ServiceResponse
  * </ul>
  *
  * @since 1.4.0
- * @author Sean Ridgley
  */
 class OmegaProcessJobProvider implements ProcessJobProvider {
 
@@ -30,6 +32,9 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 	protected Plugin plugin
 	protected final LogWrapper log = LogWrapper.instance
 
+	// In-memory overrides for retry-with-inputs testing
+	Map<Long, Map> eventConfigOverrides = [:]
+
 	OmegaProcessJobProvider(Plugin plugin, MorpheusContext morpheusContext) {
 		super()
 		this.morpheusContext = morpheusContext
@@ -38,8 +43,18 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 
 	@Override
 	ServiceResponse<ProcessJobExecutionResponse> execute(ProcessJobExecutionRequest request) {
-		log.info("Omega ProcessJob executing for event ${request.processEventId}")
+		log.info("Omega ProcessJob executing for event ${request.processEventId}, overrides map keys: ${eventConfigOverrides.keySet()}")
 		def opts = request.opts ?: [:]
+		log.info("Original opts: ${opts}")
+
+		// Apply any in-memory overrides from retry-with-inputs
+		Map overrides = eventConfigOverrides.remove(request.processEventId)
+		if (overrides) {
+			log.info("Applying config overrides for event ${request.processEventId}: ${overrides}")
+			opts = opts + overrides
+		} else {
+			log.info("No overrides found for event ${request.processEventId}")
+		}
 
 		// Simulate work
 		Integer sleepSeconds = (opts.sleepSeconds as Integer) ?: 5
@@ -48,14 +63,17 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 
 		// Check if we should simulate failure
 		Boolean shouldFail = opts.simulateFailure?.toString()?.equalsIgnoreCase("true")
-		if(shouldFail) {
+		log.info("simulateFailure value: '${opts.simulateFailure}', shouldFail: ${shouldFail}")
+		if (shouldFail) {
+			// retryAttempt is 0-based: 0 = first execution, 1 = first retry, etc.
 			Integer retryAttempt = (opts.retryAttempt as Integer) ?: 0
 			Integer succeedOnAttempt = (opts.succeedOnAttempt as Integer) ?: 0
-			if(succeedOnAttempt > 0 && retryAttempt >= succeedOnAttempt) {
-				log.info("Retry attempt ${retryAttempt} >= succeedOnAttempt ${succeedOnAttempt}, succeeding now")
+			// succeedOnAttempt uses 1-based counting: 1 = succeed on first try, 2 = fail once then succeed
+			if (succeedOnAttempt > 0 && (retryAttempt + 1) >= succeedOnAttempt) {
+				log.info("Attempt ${retryAttempt + 1} >= succeedOnAttempt ${succeedOnAttempt}, succeeding now")
 			} else {
-				log.warn("Simulating failure for event ${request.processEventId} (attempt ${retryAttempt})")
-				return ServiceResponse.error("Simulated failure on attempt ${retryAttempt}")
+				log.warn("Simulating failure for event ${request.processEventId} (attempt ${retryAttempt + 1})")
+				return ServiceResponse.error("Simulated failure on attempt ${retryAttempt + 1}")
 			}
 		}
 
@@ -67,6 +85,26 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 			completedAt        : new Date().toString(),
 			processEventId     : request.processEventId
 		]
+
+		// Write the output message to the process step so it's visible in History
+		Long processId = opts.processId as Long
+		if (processId) {
+			try {
+				def process = new Process()
+				process.id = processId
+				def stepUpdate = new ProcessStepUpdate()
+				stepUpdate.output = outputMessage
+				stepUpdate.message = outputMessage
+				morpheusContext.services.process.updateProcessStep(
+					process,
+					ProcessStepType.GENERAL,
+					stepUpdate,
+					false
+				).blockingGet()
+			} catch (e) {
+				log.warn("Failed to update process step message: ${e.message}")
+			}
+		}
 
 		log.info("Omega ProcessJob completed successfully for event ${request.processEventId}")
 		return ServiceResponse.success(response)
@@ -96,7 +134,7 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 
 	@Override
 	Boolean isCancelable() {
-		return false
+		return true
 	}
 
 	@Override
