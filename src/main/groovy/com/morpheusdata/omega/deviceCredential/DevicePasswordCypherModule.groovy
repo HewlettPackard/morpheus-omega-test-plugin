@@ -26,9 +26,6 @@ import groovy.util.logging.Slf4j
  * {
  *   "username": "admin",
  *   "password": "newSecurePassword",
- *   "config": {
- *     "pushToDevice": true
- *   },
  *   "refType": "ComputeServer",
  *   "refId": "some-uuid-here"
  * }
@@ -84,11 +81,10 @@ class DevicePasswordCypherModule implements CypherModule {
 			return null
 		}
 
-		println "Parsed payload for ilo-device write at key ${relativeKey}: ${payload}"
+		log.info("Parsed payload for ilo-device write at key ${relativeKey}: ${payload}")
 		String username = payload.username as String
 		String password = payload.password as String
 
-		Boolean pushToDevice = payload.config?.pushToDevice as Boolean ?: false
 		String refType = payload.refType as String ?: keyContext.refType
 		String refId = payload.refId as String ?: keyContext.refId
 
@@ -97,12 +93,18 @@ class DevicePasswordCypherModule implements CypherModule {
 			return null
 		}
 
-		// Push to device only when we have a specific device ref (not base key)
-		if (pushToDevice && refId) {
-			// need to get the current values for the device to perform the update, which means reading the existing value
+		if (payload.pendingPayloadHash) {
+			log.info("Pending credential update for ilo-device key: {}. Payload hash: {}", relativeKey, payload.pendingPayloadHash)
+		} else if (refId) {
+			// simulate random failure
+//			if (new Random().nextBoolean()) {
+//				log.error("Simulated device push failure for key: {}. Nothing will be persisted (atomic failure).", relativeKey)
+//				return null
+//			}
+
 			def currentValue = cypher.read(key)
-			// if there is no current value is is the first time writing for this key, we can use the base credential (credential/v1/{credentialId}) for the current password
-			if(!currentValue) {
+			// if there is no current value it is a new credential link, so we should check for a base credential value to push to the device
+			if (!currentValue) {
 				String baseKey = "credential/v1/${keyContext.credentialId}"
 				currentValue = cypher.read(baseKey)
 				log.info("No existing value found for ilo-device key: {}. Checking base credential key: {}", relativeKey, baseKey)
@@ -125,12 +127,8 @@ class DevicePasswordCypherModule implements CypherModule {
 			} else {
 				log.info("No existing credentials found for ilo-device key: {}", relativeKey)
 			}
-		} else if (!refId) {
-			log.info("Base key write for credential: {}", keyContext.credentialId)
-		} else if(payload.pendingPayloadHash) {
-			log.info("Pending credential update for ilo-device key: {}. Payload hash: {}", relativeKey, payload.pendingPayloadHash)
 		} else {
-			log.info("Out-of-band credential update (no device push) for key: {}", relativeKey)
+			log.info("Base key write for credential: {}", keyContext.credentialId)
 		}
 
 		String persistValue = new JsonBuilder(payload).toString()
@@ -152,20 +150,19 @@ class DevicePasswordCypherModule implements CypherModule {
 
 	@Override
 	String getUsage() {
-		return 'Stores device iLO credentials with optional push-to-device on write. ' +
+		return 'Stores device iLO credentials and pushes to device on write. ' +
 			'Key format: ilo-device/credential/v1/{credentialId}/{refType}/{refUuid}. ' +
-			'Value is JSON with username, password, and optional pushToDevice flag.'
+			'Value is JSON with username and password.'
 	}
 
 	@Override
 	String getHTMLUsage() {
-		return '''<p>Stores device iLO credentials with optional push-to-device on write.</p>
+		return '''<p>Stores device iLO credentials and pushes to device on write.</p>
 			<p>Key format: <code>ilo-device/credential/v1/{credentialId}/{refType}/{refUuid}</code></p>
-			<p>Value format: <code>{"username":"admin","password":"secret","pushToDevice":true}</code></p>
+			<p>Value format: <code>{"username":"admin","password":"secret"}</code></p>
 			<ul>
-				<li>When <b>refType/refUuid</b> are present and <b>pushToDevice=true</b>: pushes to device, then persists</li>
+				<li>When <b>refType/refUuid</b> are present: pushes to device, then persists</li>
 				<li>When absent (base key): base credential storage (no device push)</li>
-				<li>When <b>pushToDevice=false</b>: out-of-band update (Morpheus only)</li>
 			</ul>'''
 	}
 

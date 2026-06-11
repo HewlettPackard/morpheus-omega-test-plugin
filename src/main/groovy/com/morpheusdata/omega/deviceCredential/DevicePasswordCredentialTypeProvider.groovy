@@ -12,7 +12,7 @@ import groovy.util.logging.Slf4j
  * When credentials of this type are saved, persistence is routed through
  * the Cypher system to the mount path specified in backendConfig,
  * where the {@link DevicePasswordCypherModule} handles the write
- * (including optional device push).
+ * (including device push).
  */
 @Slf4j
 class DevicePasswordCredentialTypeProvider implements CredentialTypeProvider {
@@ -30,7 +30,7 @@ class DevicePasswordCredentialTypeProvider implements CredentialTypeProvider {
 		credentialType.code = 'iLO-device-username-password'
 		credentialType.name = 'iLO Username and Password'
 		credentialType.nameCode = 'iLO Username and Password'
-		credentialType.description = 'Credential type for managing iLO device username and password with optional push-to-device support'
+		credentialType.description = 'Credential type for managing iLO device username and password'
 		credentialType.enabled = true
 		credentialType.creatable = true
 		credentialType.editable = true
@@ -61,18 +61,6 @@ class DevicePasswordCredentialTypeProvider implements CredentialTypeProvider {
 				inputType: OptionType.InputType.PASSWORD,
 				required: true,
 				displayOrder: 1,
-			),
-			new OptionType(
-				name: 'Push to Device',
-				code: 'iLO-device-username-password.pushToDevice',
-				fieldName: 'pushToDevice',
-				fieldLabel: 'Push to Device',
-				inputType: OptionType.InputType.CHECKBOX,
-				required: false,
-				displayOrder: 3,
-				defaultValue: 'on',
-				showOnCreate: false,
-				helpText: 'When enabled (in-band), the password change is pushed to the physical device. When disabled (out-of-band), only the Morpheus inventory is updated.',
 			),
 		]
 	}
