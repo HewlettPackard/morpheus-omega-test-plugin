@@ -290,7 +290,7 @@ class BaremetalCloudProvider implements CloudProvider {
 												fieldName: 'preProvisioned',
 												fieldContext: 'config',
 												fieldLabel: 'Pre-provisioned',
-												displayOrder: 5,
+												displayOrder: 3,
 												required: false,
 												enabled: true,
 												editable: false,
