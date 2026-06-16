@@ -1,0 +1,68 @@
+resource "workload-type" "omega-process-1_0" {
+  code             = "omega.process.provision"
+  shortName        = "Omega-Process-Service"
+  name             = "Omega Process Service"
+  ports            = []
+  containerVersion = "1.0"
+  repositoryImage  = ""
+  entryPoint       = ""
+  category         = "omega.process"
+  statTypeCode     = "vm"
+  logTypeCode      = "Omega-Process-Service"
+  serverType       = "vm"
+  provisionType    = "omega.process.provision"
+  showServerLogs   = true
+  actions          = ["generic-remove-node"]
+}
+
+resource "workload-type-set" "omega-process-1_0-set" {
+  code           = "omega.process.provision.containerTypeSet"
+  workloadType   = workload-type.omega-process-1_0
+  priorityOrder  = 0
+  dynamicCount   = true
+  containerCount = 1
+}
+
+resource "instance-type" "omega-process" {
+  code                    = "omega.process.provision"
+  name                    = "Omega Process Service"
+  category                = "cloud"
+  active                  = true
+  enabled                 = true
+  hasConfig               = true
+  hasSettings             = false
+  hasDeployment           = false
+  versions                = ["1.0"]
+  hasAutoScale            = true
+  description             = "Provision example process service usecases."
+  provisionTypeDefault    = true
+  provisionSelectType     = "zone"
+  provisionType           = "omega.process.provision"
+  pluginIconPath          = "omega-circular.svg"
+  pluginIconDarkPath      = "omega-circular-dark.svg"
+}
+
+resource "instance-type-layout" "omega-process-1_0-single" {
+  code            = "omega.process.provision"
+  name            = "Omega Process Service Layout"
+  sortOrder       = 0
+  instanceVersion = "1.0"
+  description     = "This will provision a single process service instance"
+  instanceType    = instance-type.omega-process
+  serverCount     = 1
+  portCount       = 1
+  enabled         = true
+  creatable       = true
+  containers      = [workload-type-set.omega-process-1_0-set]
+  actions         = ["generic-add-node"]
+  optionTypes     = []
+  provisionType   = "omega.process.provision"
+}
+
+resource "scale-action" "omega-process-1_0-single" {
+  code       = "omega.process.provision"
+  scaleType  = "action"
+  layout     = instance-type-layout.omega-process-1_0-single
+  upAction   = "generic-add-node"
+  downAction = "generic-remove-node"
+}
