@@ -53,6 +53,7 @@ class OmegaProcessJobController implements PluginController {
 		return [
 			Route.build('/process-jobs/execute', 'execute', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/start-process', 'startProcess', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/start-system-process', 'startSystemProcess', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/end-process', 'endProcess', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/add-steps', 'addSteps', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
@@ -173,6 +174,81 @@ class OmegaProcessJobController implements PluginController {
 				processId: process?.id,
 				steps    : steps,
 				msg      : "Process started for workload ${workloadId} with ${stepCount} step(s)"
+			])
+		} catch (e) {
+			return errorResponse(e.message)
+		}
+	}
+
+	/**
+	 * POST /plugin/process-jobs/start-system-process
+	 * Starts a standalone process associated to a System (refType='system') via the new
+	 * MorpheusProcessService#startProcess(System, ...) overload — no workload required — then
+	 * inserts one or more omega process job steps so the process is immediately usable.
+	 */
+	def startSystemProcess(ViewModel<Map> model) {
+		try {
+			Map body = model.object ?: [:]
+			Long systemId = body.systemId as Long
+			Long userId = (body.userId as Long) ?: 1L
+			String description = (body.description as String) ?: 'Omega dummy system process'
+			String stepTypeCode = (body.stepTypeCode as String) ?: 'general'
+			List stepConfigs = (body.stepConfigs as List) ?: []
+			Integer stepCount = body.containsKey('stepCount') ? (body.stepCount as Integer) : stepConfigs.size()
+
+			if (!systemId) {
+				def resp = JsonResponse.of([success: false, msg: 'systemId is required'])
+				resp.status = 400
+				return resp
+			}
+
+			def system = morpheusContext.services.system.get(systemId)
+			if (!system) {
+				def resp = JsonResponse.of([success: false, msg: "System ${systemId} not found"])
+				resp.status = 404
+				return resp
+			}
+
+			User user = morpheusContext.services.admin.user.get(userId)
+			if (!user) {
+				def resp = JsonResponse.of([success: false, msg: "User ${userId} not found"])
+				resp.status = 404
+				return resp
+			}
+
+			ProcessModel process = morpheusContext.services.process.startProcess(
+				system,
+				ProcessStepType.forCode(stepTypeCode),
+				user,
+				description
+			)
+
+			// Insert omega process job steps into the new system process
+			def steps = []
+			if (process) {
+				def processService = morpheusContext.services.process
+				for (int i = 0; i < stepCount; i++) {
+					def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
+					config = config ?: [sleepSeconds: 2, outputMessage: "Step ${i + 1} complete"]
+					config.processId = process.id
+
+					def stepEvent = new ProcessEvent()
+					stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
+					stepEvent.eventTitle = "Omega System Step ${i + 1}"
+					stepEvent.jobName = OmegaProcessJobProvider.PROVIDER_CODE
+					stepEvent.jobConfig = config
+
+					def insertRequest = new InsertProcessStepRequest(process, stepEvent)
+					InsertProcessStepResponse insertResponse = processService.insertProcessStep(insertRequest)
+					steps << [eventId: insertResponse?.processEventId, stepTitle: stepEvent.eventTitle]
+				}
+			}
+
+			return JsonResponse.of([
+				success  : process != null,
+				processId: process?.id,
+				steps    : steps,
+				msg      : "System process started for system ${systemId} with ${stepCount} step(s)"
 			])
 		} catch (e) {
 			return errorResponse(e.message)
