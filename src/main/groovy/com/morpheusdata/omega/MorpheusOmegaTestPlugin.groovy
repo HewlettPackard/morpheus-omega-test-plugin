@@ -39,7 +39,6 @@ import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.omega.system.OmegaSystemProvider
-import com.morpheusdata.omega.computehost.OmegaComputeHostController
 
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
@@ -90,8 +89,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		// Set a no-op renderer to bypass the DynamicTemplateLoader bug in PluginManager
 		this.setRenderer(new NoOpRenderer())
 		def processJobController = new OmegaProcessJobController(this, this.morpheus, omegaProcessJobProvider)
-		def computeHostController = new OmegaComputeHostController(this, this.morpheus)
-		this.controllers = [processJobController, computeHostController]
+		this.controllers = [processJobController]
 	}
 
 	/**
