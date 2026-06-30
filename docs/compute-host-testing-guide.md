@@ -15,9 +15,9 @@ platform — no native UI or bundled cloud calls it.
 ## Prerequisites
 
 1. Morpheus UI running locally with the omega test plugin loaded
-2. The omega plugin JAR built against SDK `1.4.2-SNAPSHOT` and deployed (`./gradlew shadowJar`)
+2. The omega plugin JAR built against SDK `1.5.0-SNAPSHOT` and deployed (`./gradlew shadowJar`)
 3. A backend build containing the `addHost`/`removeHost` impl (branch
-   `jayg/morph-12852/addRemoveHostApi` or later)
+   `jayg/morph-12852/addRemoveHostDev91` or later)
 4. An Omega Baremetal cloud created and assigned to a group (note the cloud ID and group ID)
 
 ## Authentication
