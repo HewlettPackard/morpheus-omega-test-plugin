@@ -24,7 +24,6 @@ import groovy.util.logging.Slf4j
  * Endpoints (all under /plugin/compute-hosts/...):
  *   POST /plugin/compute-hosts/add     — build an AddHostRequest and call services.computeServer.addHost
  *   POST /plugin/compute-hosts/remove  — build a RemoveHostRequest and call services.computeServer.removeHost
- *   GET  /plugin/compute-hosts/health  — simple health check
  *
  * @since 0.4.0
  */
@@ -43,7 +42,6 @@ class OmegaComputeHostController implements PluginController {
         return [
                 Route.build('/compute-hosts/add', 'add', Permission.build('admin-appliance', 'full')),
                 Route.build('/compute-hosts/remove', 'remove', Permission.build('admin-appliance', 'full')),
-                Route.build('/compute-hosts/health', 'health', Permission.build('admin-appliance', 'full')),
         ]
     }
 
@@ -164,10 +162,6 @@ class OmegaComputeHostController implements PluginController {
         }
     }
 
-    // GET /plugin/compute-hosts/health
-    def health(ViewModel<Map> model) {
-        return JsonResponse.of([status: "ok", controller: getCode()])
-    }
     //Utility
 
     private static JsonResponse errorResponse(String message) {

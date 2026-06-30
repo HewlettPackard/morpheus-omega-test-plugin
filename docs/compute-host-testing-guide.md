@@ -62,8 +62,8 @@ echo "Session CSRF: $SESSION_CSRF"
 - **POST requests:** Need both the session cookie AND the CSRF token header
 
 ```bash
-# GET example (no CSRF needed)
-curl -s -b /tmp/morph_cookies.txt http://localhost:8080/plugin/compute-hosts/health
+# GET example (no CSRF needed) — any authenticated page works
+curl -s -b /tmp/morph_cookies.txt http://localhost:8080/operations/activity -o /dev/null -w "%{http_code}\n"
 
 # POST example (CSRF required via X-XSRF-TOKEN header)
 curl -s -b /tmp/morph_cookies.txt -X POST \
@@ -82,9 +82,16 @@ curl -s -b /tmp/morph_cookies.txt -X POST \
 
 ### Verify the Plugin is Loaded
 
+POST to `/add` with an empty body — a loaded controller responds with a `400` and
+`cloudId is required`, which confirms the route is wired (rather than a `404`/login redirect):
+
 ```bash
-curl -s -b /tmp/morph_cookies.txt http://localhost:8080/plugin/compute-hosts/health
-# {"status":"ok","controller":"omega-compute-host-controller"}
+curl -s -b /tmp/morph_cookies.txt -X POST \
+  http://localhost:8080/plugin/compute-hosts/add \
+  -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $SESSION_CSRF" \
+  -d '{}'
+# {"success":false,"msg":"cloudId is required"}
 ```
 
 ---
@@ -244,15 +251,6 @@ returns it with a removed/decommissioned status).
 
 ## Endpoint Reference
 
-### GET /plugin/compute-hosts/health
-
-Returns controller status. Useful for verifying the plugin is loaded and routing works.
-
-**Response:**
-```json
-{"status": "ok", "controller": "omega-compute-host-controller"}
-```
-
 ### POST /plugin/compute-hosts/add
 
 Builds an `AddHostRequest` and calls `services.computeServer.addHost(cloud, request)`.
@@ -369,7 +367,7 @@ The SDK `ServiceResponse.error(String)` single-arg shim stores the message under
 and leaves `.msg` null. Check `errors` when `msg` is null. (The MORPH-12852 guard clauses use
 `error(msg, [:])`, which does set `.msg`.)
 
-### 404 on /plugin/compute-hosts/health
+### 404 on /plugin/compute-hosts/add or /remove
 
 - Confirm the freshly built `*-all.jar` is in the stack's plugin directory
   (`~/git/morpheus-plugin-core/plugins`) and the old jar was removed.
