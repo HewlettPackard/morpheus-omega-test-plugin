@@ -5,8 +5,6 @@ import com.morpheusdata.core.Plugin
 import com.morpheusdata.core.providers.ProcessJobProvider
 import com.morpheusdata.model.OptionType
 import com.morpheusdata.model.Process
-import com.morpheusdata.model.ProcessStepType
-import com.morpheusdata.model.ProcessStepUpdate
 import com.morpheusdata.model.process.ProcessJobExecutionRequest
 import com.morpheusdata.model.process.ProcessJobExecutionResponse
 import com.morpheusdata.omega.logging.LogWrapper
@@ -72,37 +70,40 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 			if (succeedOnAttempt > 0 && (retryAttempt + 1) >= succeedOnAttempt) {
 				log.info("Attempt ${retryAttempt + 1} >= succeedOnAttempt ${succeedOnAttempt}, succeeding now")
 			} else {
+				String stepError = (opts.stepError as String) ?: "Simulated failure on attempt ${retryAttempt + 1}"
 				log.warn("Simulating failure for event ${request.processEventId} (attempt ${retryAttempt + 1})")
-				return ServiceResponse.error("Simulated failure on attempt ${retryAttempt + 1}")
+				def errorResponse = new ProcessJobExecutionResponse()
+				errorResponse.error = stepError
+				return new ServiceResponse<ProcessJobExecutionResponse>(success: false, msg: stepError, data: errorResponse)
 			}
 		}
 
 		// Build response with nextOpts for downstream steps
 		String outputMessage = opts.outputMessage ?: "Omega step completed successfully"
+		String stepOutput = opts.stepOutput as String
+		String stepError = opts.stepError as String
 		def response = new ProcessJobExecutionResponse()
 		response.nextOpts = [
 			previousStepMessage: outputMessage,
 			completedAt        : new Date().toString(),
 			processEventId     : request.processEventId
 		]
+		// Set step-level message/output (propagated by onStepSuccess via endProcessStep)
+		response.message = outputMessage
+		if (stepOutput) {
+			response.output = stepOutput
+		}
 
-		// Write the output message to the process step so it's visible in History
+		// Also update the process-level message using the new MORPH-13940 API
 		Long processId = opts.processId as Long
-		if (processId) {
+		Long systemId = opts.systemId as Long
+		if (processId && systemId) {
 			try {
 				def process = new Process()
 				process.id = processId
-				def stepUpdate = new ProcessStepUpdate()
-				stepUpdate.output = outputMessage
-				stepUpdate.message = outputMessage
-				morpheusContext.services.process.updateProcessStep(
-					process,
-					ProcessStepType.GENERAL,
-					stepUpdate,
-					false
-				).blockingGet()
+				morpheusContext.services.process.updateProcessMessage(process, systemId, outputMessage).blockingGet()
 			} catch (e) {
-				log.warn("Failed to update process step message: ${e.message}")
+				log.warn("Failed to update process message: ${e.message}")
 			}
 		}
 
@@ -113,7 +114,19 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 	@Override
 	ServiceResponse onFail(ProcessJobExecutionRequest request) {
 		log.warn("Omega ProcessJob onFail called for event ${request.processEventId} — cleaning up side effects")
-		// In a real provider, you'd clean up any resources created during execute()
+		// Update the process-level error using the new API
+		def opts = request.opts ?: [:]
+		Long processId = opts.processId as Long
+		Long systemId = opts.systemId as Long
+		if (processId && systemId) {
+			try {
+				def process = new Process()
+				process.id = processId
+				morpheusContext.services.process.updateProcessError(process, systemId, "Process job failed for event ${request.processEventId}").blockingGet()
+			} catch (e) {
+				log.warn("Failed to update process error: ${e.message}")
+			}
+		}
 		return ServiceResponse.success()
 	}
 
