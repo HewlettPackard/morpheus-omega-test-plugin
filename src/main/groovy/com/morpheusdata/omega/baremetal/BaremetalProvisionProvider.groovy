@@ -466,6 +466,12 @@ class BaremetalProvisionProvider extends AbstractProvisionProvider
 	 * {@inheritDoc}
 	 */
 	@Override
+	Boolean supportsOverridingPrimaryInterface() { true }
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	Collection<VirtualImageType> getVirtualImageTypes() { [ new VirtualImageType(code: 'iso', name: 'ISO') ] }
 
 	/**

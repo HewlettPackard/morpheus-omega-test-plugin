@@ -1,0 +1,15 @@
+{{!
+	System Process Job tab shell.
+
+	Rendered server-side by OmegaSystemProcessJobTabProvider and injected into the React system
+	detail page via innerHTML (see morpheus-react .../Systems/tabs.jsx). innerHTML does NOT execute
+	inline scripts, so the interactive logic lives in the external bundle below. The React host
+	finds [data-plugin-react-root] + the <script src>, loads the bundle, then calls
+	window.Morpheus.pluginTabs["omega-system-process-job"].mount(root).
+}}
+<div data-plugin-react-root
+	data-plugin-key="omega-system-process-job"
+	data-plugin-entry="mount"
+	data-system-id="{{systemId}}"
+	data-system-name="{{systemName}}"></div>
+<script src="{{asset "/omega/systemProcessJobTab.js"}}?v={{version}}-{{cacheBust}}" nonce="{{nonce}}"></script>

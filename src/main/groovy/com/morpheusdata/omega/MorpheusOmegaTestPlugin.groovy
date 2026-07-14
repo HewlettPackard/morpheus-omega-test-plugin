@@ -35,12 +35,13 @@ import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
 import com.morpheusdata.omega.process.ProcessServiceExamplesDataSource
 import com.morpheusdata.omega.processjob.OmegaProcessJobController
 import com.morpheusdata.omega.processjob.OmegaProcessJobProvider
-import com.morpheusdata.omega.processjob.OmegaProcessJobTabProvider
+import com.morpheusdata.omega.processjob.OmegaSystemProcessJobTabProvider
 import com.morpheusdata.omega.processjob.NoOpRenderer
 import com.morpheusdata.omega.storage.OmegaStorageVolumeDetailProvider
 import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.omega.system.OmegaSystemProvider
+import com.morpheusdata.omega.computehost.OmegaComputeHostController
 
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
@@ -87,15 +88,15 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		def omegaProcessJobProvider = new OmegaProcessJobProvider(this, this.morpheus)
 		this.registerProvider(omegaProcessJobProvider)
 
-		// Register the instance tab for process job testing UI
-		this.registerProvider(new OmegaProcessJobTabProvider(this, this.morpheus))
+		// Register the system tab for process job testing UI (relocated from the instance tab)
+		this.registerProvider(new OmegaSystemProcessJobTabProvider(this, this.morpheus))
 
 		// Register the controller for process job REST endpoints via ControllerProvider
 		// Set a no-op renderer to bypass the DynamicTemplateLoader bug in PluginManager
 		this.setRenderer(new NoOpRenderer())
 		def processJobController = new OmegaProcessJobController(this, this.morpheus, omegaProcessJobProvider)
-		this.controllers = [processJobController]
-
+		def computeHostController = new OmegaComputeHostController(this, this.morpheus)
+		this.controllers = [processJobController, computeHostController]
 	}
 
 	/**
