@@ -283,7 +283,7 @@ class OmegaProcessJobController implements PluginController {
 			def process = new ProcessModel()
 			process.id = processId
 
-			morpheusContext.services.process.endProcess(process, status, output).blockingGet()
+			morpheusContext.services.process.endProcess(process, status, output)
 
 			return JsonResponse.of([
 				success  : true,

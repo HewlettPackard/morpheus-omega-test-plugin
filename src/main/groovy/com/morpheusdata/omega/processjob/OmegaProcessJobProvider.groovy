@@ -74,6 +74,7 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 				log.warn("Simulating failure for event ${request.processEventId} (attempt ${retryAttempt + 1})")
 				def errorResponse = new ProcessJobExecutionResponse()
 				errorResponse.error = stepError
+				errorResponse.output = "Step failed: ${stepError}"
 				return new ServiceResponse<ProcessJobExecutionResponse>(success: false, msg: stepError, data: errorResponse)
 			}
 		}
@@ -81,17 +82,16 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 		// Build response with nextOpts for downstream steps
 		String outputMessage = opts.outputMessage ?: "Omega step completed successfully"
 		String stepOutput = opts.stepOutput as String
-		String stepError = opts.stepError as String
 		def response = new ProcessJobExecutionResponse()
+		response.message = outputMessage
+		response.output = stepOutput ?: outputMessage
 		response.nextOpts = [
 			previousStepMessage: outputMessage,
 			completedAt        : new Date().toString(),
 			processEventId     : request.processEventId
 		]
-		// Set step-level message/output (propagated by onStepSuccess via endProcessStep)
-		response.message = outputMessage
 		if (stepOutput) {
-			response.output = stepOutput
+			response.nextOpts.stepOutput = stepOutput
 		}
 
 		// Also update the process-level message using the new MORPH-13940 API
@@ -101,7 +101,7 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 			try {
 				def process = new Process()
 				process.id = processId
-				morpheusContext.services.process.updateProcessMessage(process, systemId, outputMessage).blockingGet()
+				morpheusContext.services.process.updateProcessMessage(process, systemId, outputMessage)
 			} catch (e) {
 				log.warn("Failed to update process message: ${e.message}")
 			}
@@ -122,7 +122,7 @@ class OmegaProcessJobProvider implements ProcessJobProvider {
 			try {
 				def process = new Process()
 				process.id = processId
-				morpheusContext.services.process.updateProcessError(process, systemId, "Process job failed for event ${request.processEventId}").blockingGet()
+				morpheusContext.services.process.updateProcessError(process, systemId, "Process job failed for event ${request.processEventId}")
 			} catch (e) {
 				log.warn("Failed to update process error: ${e.message}")
 			}
