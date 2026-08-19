@@ -108,7 +108,11 @@
 			'				<div class="col-sm-1"><div class="form-group"><label>User Cancelable</label><div style="margin-top:6px;"><input type="checkbox" data-field="cancelable" checked disabled></div></div></div>',
 			'				<div class="col-sm-2"><div class="form-group"><label>Succeed On Attempt</label><input type="number" data-field="succeed-on-attempt" value="0" min="0" class="form-control" disabled></div></div>',
 			'				<div class="col-sm-2"><div class="form-group"><label>Sleep Seconds</label><input type="number" data-field="sleep-seconds" value="5" min="1" class="form-control" disabled></div></div>',
-			'				<div class="col-sm-3"><div class="form-group"><label>Output Message</label><input type="text" data-field="output-message" value="" class="form-control" placeholder="(optional)" disabled></div></div>',
+			'				<div class="col-sm-3"><div class="form-group"><label>Message</label><input type="text" data-field="output-message" value="" class="form-control" placeholder="(optional)" disabled></div></div>',
+			'			</div>',
+			'			<div class="row">',
+			'				<div class="col-sm-4"><div class="form-group"><label>Output</label><input type="text" data-field="step-output" value="" class="form-control" placeholder="(optional)" disabled></div></div>',
+			'				<div class="col-sm-4"><div class="form-group"><label>Error Message</label><input type="text" data-field="step-error" value="" class="form-control" placeholder="(optional — shown on failure)" disabled></div></div>',
 			'				<div class="col-sm-2"><div class="form-group"><label>&nbsp;</label><div><button type="button" data-action="add-step" class="btn btn-default" disabled>+ Add Step</button></div></div></div>',
 			'			</div>',
 			'			<table data-field="steps-table" class="table" style="display:none;">',
@@ -205,7 +209,7 @@
 		}
 
 		function enableStepInputs(enabled) {
-			qa('[data-field="step-config-row"] input, [data-field="step-config-row"] button').forEach(function (el) {
+			qa('[data-section="steps"] input, [data-section="steps"] button').forEach(function (el) {
 				el.disabled = !enabled;
 			});
 		}
@@ -423,9 +427,17 @@
 				if (msg) {
 					config.outputMessage = msg;
 				}
+				var stepOutput = q('[data-field="step-output"]').value;
+				if (stepOutput) {
+					config.stepOutput = stepOutput;
+				}
+				var stepError = q('[data-field="step-error"]').value;
+				if (stepError) {
+					config.stepError = stepError;
+				}
 				target.disabled = true;
 				log("Adding step to process " + state.processId + "...");
-				apiPost("add-steps", { processId: state.processId, stepConfigs: [config] })
+				apiPost("add-steps", { processId: state.processId, systemId: Number(state.systemId), stepConfigs: [config] })
 					.then(function (data) {
 						target.disabled = false;
 						if (data.success && data.steps && data.steps.length > 0) {

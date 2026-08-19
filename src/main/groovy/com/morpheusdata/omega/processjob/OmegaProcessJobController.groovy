@@ -58,6 +58,8 @@ class OmegaProcessJobController implements PluginController {
 			Route.build('/process-jobs/add-steps', 'addSteps', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/retry', 'retry', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/update-process-message', 'updateProcessMessage', Permission.build('admin-appliance', 'full')),
+			Route.build('/process-jobs/update-process-error', 'updateProcessError', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/status', 'status', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/health', 'health', Permission.build('admin-appliance', 'full')),
 		]
@@ -236,6 +238,7 @@ class OmegaProcessJobController implements PluginController {
 					def config = (i < stepConfigs.size() ? stepConfigs[i] : null) as Map
 					config = config ?: [sleepSeconds: 2, outputMessage: "Step ${i + 1} complete"]
 					config.processId = process.id
+					config.systemId = systemId
 
 					def stepEvent = new ProcessEvent()
 					stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
@@ -280,7 +283,7 @@ class OmegaProcessJobController implements PluginController {
 			def process = new ProcessModel()
 			process.id = processId
 
-			morpheusContext.services.process.endProcess(process, status, output).blockingGet()
+			morpheusContext.services.process.endProcess(process, status, output)
 
 			return JsonResponse.of([
 				success  : true,
@@ -300,6 +303,7 @@ class OmegaProcessJobController implements PluginController {
 		try {
 			Map body = model.object ?: [:]
 			Long processId = body.processId as Long
+			Long systemId = body.systemId as Long
 			List stepConfigs = (body.stepConfigs as List) ?: []
 			String stepTypeCode = (body.stepTypeCode as String) ?: 'general'
 
@@ -322,6 +326,9 @@ class OmegaProcessJobController implements PluginController {
 			stepConfigs.eachWithIndex { cfg, i ->
 				def config = (cfg as Map) ?: [sleepSeconds: 5]
 				config.processId = processId
+				if (systemId) {
+					config.systemId = systemId
+				}
 
 				def stepEvent = new ProcessEvent()
 				stepEvent.stepType = ProcessStepType.forCode(stepTypeCode)
@@ -417,7 +424,7 @@ class OmegaProcessJobController implements PluginController {
 
 	/**
 	 * GET /plugin/process-jobs/status?processId=123
-	 * Returns process and event status information.
+	 * Returns process and event status information including message, error, status, and progress.
 	 */
 	def status(ViewModel<Map> model) {
 		try {
@@ -441,8 +448,14 @@ class OmegaProcessJobController implements PluginController {
 				success  : true,
 				processId: process.id,
 				process  : [
-					id      : process.id,
-					stepType: process.stepType?.code
+					id       : process.id,
+					stepType : process.stepType?.code,
+					status   : process.status,
+					message  : process.message,
+					error    : process.error,
+					percent  : process.percent,
+					startDate: process.startDate?.toString(),
+					endDate  : process.endDate?.toString()
 				]
 			])
 		} catch (e) {
@@ -456,6 +469,118 @@ class OmegaProcessJobController implements PluginController {
 	 */
 	def health(ViewModel<Map> model) {
 		return JsonResponse.of([status: 'ok', provider: OmegaProcessJobProvider.PROVIDER_CODE])
+	}
+
+	/**
+	 * POST /plugin/process-jobs/update-process-message
+	 * Updates the message on a process, validated against the system it belongs to.
+	 *
+	 * Body params:
+	 *   processId (required) — the process ID
+	 *   systemId  (required) — the system ID the process should belong to
+	 *   message   (required) — the message to set
+	 *
+	 * Alternatively, use refType + refId instead of systemId for non-system processes.
+	 */
+	def updateProcessMessage(ViewModel<Map> model) {
+		try {
+			Map body = model.object ?: [:]
+			Long processId = body.processId as Long
+			Long systemId = body.systemId as Long
+			String refType = body.refType as String
+			Long refId = body.refId as Long
+			String message = body.message as String
+
+			if (!processId) {
+				def resp = JsonResponse.of([success: false, msg: 'processId is required'])
+				resp.status = 400
+				return resp
+			}
+			if (!message) {
+				def resp = JsonResponse.of([success: false, msg: 'message is required'])
+				resp.status = 400
+				return resp
+			}
+			if (!systemId && !refType) {
+				def resp = JsonResponse.of([success: false, msg: 'systemId or refType+refId is required'])
+				resp.status = 400
+				return resp
+			}
+
+			def processModel = new ProcessModel()
+			processModel.id = processId
+
+			Boolean result
+			if (systemId) {
+				result = morpheusContext.services.process.updateProcessMessage(processModel, systemId, message)
+			} else {
+				result = morpheusContext.services.process.updateProcessMessage(processModel, refType, refId, message)
+			}
+
+			return JsonResponse.of([
+				success  : result,
+				processId: processId,
+				msg      : result ? "Process message updated" : "Process not found or refType/refId mismatch"
+			])
+		} catch (e) {
+			return errorResponse(e.message)
+		}
+	}
+
+	/**
+	 * POST /plugin/process-jobs/update-process-error
+	 * Updates the error on a process, validated against the system it belongs to.
+	 *
+	 * Body params:
+	 *   processId (required) — the process ID
+	 *   systemId  (required) — the system ID the process should belong to
+	 *   error     (required) — the error to set
+	 *
+	 * Alternatively, use refType + refId instead of systemId for non-system processes.
+	 */
+	def updateProcessError(ViewModel<Map> model) {
+		try {
+			Map body = model.object ?: [:]
+			Long processId = body.processId as Long
+			Long systemId = body.systemId as Long
+			String refType = body.refType as String
+			Long refId = body.refId as Long
+			String error = body.error as String
+
+			if (!processId) {
+				def resp = JsonResponse.of([success: false, msg: 'processId is required'])
+				resp.status = 400
+				return resp
+			}
+			if (!error) {
+				def resp = JsonResponse.of([success: false, msg: 'error is required'])
+				resp.status = 400
+				return resp
+			}
+			if (!systemId && !refType) {
+				def resp = JsonResponse.of([success: false, msg: 'systemId or refType+refId is required'])
+				resp.status = 400
+				return resp
+			}
+
+			def processModel = new ProcessModel()
+			processModel.id = processId
+
+			Boolean result
+			if (systemId) {
+				result = morpheusContext.services.process.updateProcessError(processModel, systemId, error)
+			} else {
+				result = morpheusContext.services.process.updateProcessError(processModel, refType, refId, error)
+			}
+
+			return JsonResponse.of([
+				success  : result,
+				processId: processId,
+				msg      : result ? "Process error updated" : "Process not found or refType/refId mismatch"
+			])
+		} catch (e) {
+			return errorResponse(e.message)
+		}
 	}
 
 	// --- Utility ---
