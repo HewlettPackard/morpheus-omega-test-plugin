@@ -44,6 +44,7 @@ import com.morpheusdata.omega.storageserver.StorageServerProvider
 import com.morpheusdata.core.Plugin
 import com.morpheusdata.omega.system.OmegaSystemProvider
 import com.morpheusdata.omega.computehost.OmegaComputeHostController
+import com.morpheusdata.omega.computehost.OmegaGpuInventoryTabProvider
 
 @SuppressWarnings('unused')
 class MorpheusOmegaTestPlugin extends Plugin {
@@ -93,6 +94,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		// Register the system tabs for process job testing UIs
 		this.registerProvider(new OmegaSystemProcessJobTabProvider(this, this.morpheus))
 		this.registerProvider(new OmegaParallelProcessHistoryTabProvider(this, this.morpheus))
+		this.registerProvider(new OmegaGpuInventoryTabProvider(this, this.morpheus))
 
 		// Register the controller for process job REST endpoints via ControllerProvider
 		// Set a no-op renderer to bypass the DynamicTemplateLoader bug in PluginManager
