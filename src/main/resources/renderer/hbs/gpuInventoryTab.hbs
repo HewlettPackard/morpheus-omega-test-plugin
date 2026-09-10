@@ -1,0 +1,12 @@
+{{!
+	GPU Inventory tab shell.
+
+	The ComputeServer detail page injects this HTML and loads the external bundle through the
+	data-plugin-react-root contract.
+}}
+<div data-plugin-react-root
+	data-plugin-key="omega-gpu-inventory"
+	data-plugin-entry="mount"
+	data-server-id="{{serverId}}"
+	data-server-name="{{serverName}}"></div>
+<script src="{{asset "/omega/gpuInventoryTab.js"}}?v={{version}}-{{cacheBust}}" nonce="{{nonce}}"></script>
