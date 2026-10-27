@@ -179,11 +179,20 @@ curl -s -b /tmp/morph_cookies.txt -X POST \
    - Output Message (text)
 4. Uncheck "Simulate Failure" and submit — step should succeed on retry
 
-> **Note:** The REST `/retry` endpoint stores input overrides in-memory on the provider
-> instance, then dispatches the step. Due to the async RabbitMQ execution pipeline, the
-> in-memory approach may not reliably apply overrides. The UI retry flow uses `stepInputs`
-> which merges overrides directly into the event's stored `job_msg` config before dispatch,
-> making it the reliable path for retry-with-inputs testing.
+The same retry can be invoked through the Morpheus process-event API. Submit option values
+as a flat JSON object keyed by the provider option type field names:
+
+```bash
+curl -s -b /tmp/morph_cookies.txt -X POST \
+  http://localhost:8080/api/processes/events/<EVENT_ID>/retry \
+  -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $SESSION_CSRF" \
+  -d '{"simulateFailure": "false", "outputMessage": "succeeded after input override"}'
+```
+
+Morpheus validates the fields against the provider option types, merges them into the
+ProcessEvent's persisted job configuration, resets the manual retry state, and dispatches
+the event through the normal process pipeline.
 
 ---
 
@@ -275,18 +284,6 @@ The event status must be `pending` or `failed` — running/complete events canno
 ```json
 {"processId": 341, "eventId": 686}
 ```
-
-### POST /plugin/process-jobs/retry
-
-Re-dispatches a failed step with optional input overrides. Stores overrides in the provider's
-in-memory map, then dispatches the step for execution.
-
-**Body:**
-```json
-{"processId": 341, "eventId": 686, "inputs": {"simulateFailure": "false"}}
-```
-
-> See the note in Scenario 2 about reliability of in-memory overrides vs the UI retry flow.
 
 ### GET /plugin/process-jobs/status?processId=341
 
