@@ -387,7 +387,7 @@ class OmegaParallelProcessController implements PluginController {
 		if (completeParent) {
 			String completionMessage = "Created ${createdChildren.size()} child processes for ${scenarioName}"
 			try {
-				morpheusContext.services.process.updateProcessMessage(parentProcess, system.id as Long, completionMessage)
+				morpheusContext.services.process.updateProcessMessage(parentProcess, 'system', system.id as Long, completionMessage)
 			} catch (Exception ignored) {
 				log.debug('Unable to update parent process message before completing hierarchy', ignored)
 			}
