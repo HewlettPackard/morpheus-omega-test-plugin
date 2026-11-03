@@ -17,8 +17,6 @@ import com.morpheusdata.views.JsonResponse
 import com.morpheusdata.views.ViewModel
 import com.morpheusdata.web.PluginController
 import com.morpheusdata.web.Route
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
 
 /**
@@ -29,7 +27,6 @@ import groovy.util.logging.Slf4j
  *   POST /plugin/process-jobs/execute           — directly invoke OmegaProcessJobProvider.execute()
  *   POST /plugin/process-jobs/start-process     — start a standalone process on an existing workload
  *   POST /plugin/process-jobs/run               — dispatch a process step for execution
- *   POST /plugin/process-jobs/retry             — retry a failed process step
  *   GET  /plugin/process-jobs/status            — get status of a process and its events
  *   GET  /plugin/process-jobs/health            — simple health check
  *
@@ -57,7 +54,6 @@ class OmegaProcessJobController implements PluginController {
 			Route.build('/process-jobs/end-process', 'endProcess', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/add-steps', 'addSteps', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/run', 'run', Permission.build('admin-appliance', 'full')),
-			Route.build('/process-jobs/retry', 'retry', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/update-process-message', 'updateProcessMessage', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/update-process-error', 'updateProcessError', Permission.build('admin-appliance', 'full')),
 			Route.build('/process-jobs/status', 'status', Permission.build('admin-appliance', 'full')),
@@ -384,45 +380,6 @@ class OmegaProcessJobController implements PluginController {
 	}
 
 	/**
-	 * POST /plugin/process-jobs/retry
-	 * Retries a failed process step — resets status and dispatches via pipeline.
-	 */
-	def retry(ViewModel<Map> model) {
-		try {
-			Map body = model.object ?: [:]
-			Long processId = body.processId as Long
-			Long eventId = body.eventId as Long
-
-			if (!processId || !eventId) {
-				def resp = JsonResponse.of([success: false, msg: 'processId and eventId are required'])
-				resp.status = 400
-				return resp
-			}
-
-			// Store input overrides in the provider so they're applied on next execute()
-			Map inputs = (body.inputs as Map) ?: (body.config as Map)
-			if (inputs) {
-				log.info("Storing overrides for eventId ${eventId} (type: ${eventId.getClass()}): ${inputs}")
-				processJobProvider.eventConfigOverrides[eventId] = inputs
-				log.info("Override map now has keys: ${processJobProvider.eventConfigOverrides.keySet()} (types: ${processJobProvider.eventConfigOverrides.keySet().collect{it.getClass()}})")
-			}
-
-			def processModel = new ProcessModel()
-			processModel.id = processId
-
-			def eventModel = new ProcessEvent()
-			eventModel.id = eventId
-
-			def request = new RunProcessStepRequest(processModel, eventModel)
-			RunProcessStepResponse response = morpheusContext.services.process.runProcessStep(request)
-
-			return JsonResponse.of([success: response?.success ?: false])
-		} catch (e) {
-			return errorResponse(e.message)
-		}
-	}
-
-	/**
 	 * GET /plugin/process-jobs/status?processId=123
 	 * Returns process and event status information including message, error, status, and progress.
 	 */
@@ -473,20 +430,18 @@ class OmegaProcessJobController implements PluginController {
 
 	/**
 	 * POST /plugin/process-jobs/update-process-message
-	 * Updates the message on a process, validated against the system it belongs to.
+	 * Updates the message on a process, validated against its owning reference.
 	 *
 	 * Body params:
 	 *   processId (required) — the process ID
-	 *   systemId  (required) — the system ID the process should belong to
+	 *   refType   (required) — the process reference type
+	 *   refId     (required) — the process reference ID
 	 *   message   (required) — the message to set
-	 *
-	 * Alternatively, use refType + refId instead of systemId for non-system processes.
 	 */
 	def updateProcessMessage(ViewModel<Map> model) {
 		try {
 			Map body = model.object ?: [:]
 			Long processId = body.processId as Long
-			Long systemId = body.systemId as Long
 			String refType = body.refType as String
 			Long refId = body.refId as Long
 			String message = body.message as String
@@ -501,8 +456,8 @@ class OmegaProcessJobController implements PluginController {
 				resp.status = 400
 				return resp
 			}
-			if (!systemId && !refType) {
-				def resp = JsonResponse.of([success: false, msg: 'systemId or refType+refId is required'])
+			if (!refType || !refId) {
+				def resp = JsonResponse.of([success: false, msg: 'refType and refId are required'])
 				resp.status = 400
 				return resp
 			}
@@ -510,12 +465,7 @@ class OmegaProcessJobController implements PluginController {
 			def processModel = new ProcessModel()
 			processModel.id = processId
 
-			Boolean result
-			if (systemId) {
-				result = morpheusContext.services.process.updateProcessMessage(processModel, systemId, message)
-			} else {
-				result = morpheusContext.services.process.updateProcessMessage(processModel, refType, refId, message)
-			}
+			Boolean result = morpheusContext.services.process.updateProcessMessage(processModel, refType, refId, message)
 
 			return JsonResponse.of([
 				success  : result,
@@ -529,20 +479,18 @@ class OmegaProcessJobController implements PluginController {
 
 	/**
 	 * POST /plugin/process-jobs/update-process-error
-	 * Updates the error on a process, validated against the system it belongs to.
+	 * Updates the error on a process, validated against its owning reference.
 	 *
 	 * Body params:
 	 *   processId (required) — the process ID
-	 *   systemId  (required) — the system ID the process should belong to
+	 *   refType   (required) — the process reference type
+	 *   refId     (required) — the process reference ID
 	 *   error     (required) — the error to set
-	 *
-	 * Alternatively, use refType + refId instead of systemId for non-system processes.
 	 */
 	def updateProcessError(ViewModel<Map> model) {
 		try {
 			Map body = model.object ?: [:]
 			Long processId = body.processId as Long
-			Long systemId = body.systemId as Long
 			String refType = body.refType as String
 			Long refId = body.refId as Long
 			String error = body.error as String
@@ -557,8 +505,8 @@ class OmegaProcessJobController implements PluginController {
 				resp.status = 400
 				return resp
 			}
-			if (!systemId && !refType) {
-				def resp = JsonResponse.of([success: false, msg: 'systemId or refType+refId is required'])
+			if (!refType || !refId) {
+				def resp = JsonResponse.of([success: false, msg: 'refType and refId are required'])
 				resp.status = 400
 				return resp
 			}
@@ -566,12 +514,7 @@ class OmegaProcessJobController implements PluginController {
 			def processModel = new ProcessModel()
 			processModel.id = processId
 
-			Boolean result
-			if (systemId) {
-				result = morpheusContext.services.process.updateProcessError(processModel, systemId, error)
-			} else {
-				result = morpheusContext.services.process.updateProcessError(processModel, refType, refId, error)
-			}
+			Boolean result = morpheusContext.services.process.updateProcessError(processModel, refType, refId, error)
 
 			return JsonResponse.of([
 				success  : result,

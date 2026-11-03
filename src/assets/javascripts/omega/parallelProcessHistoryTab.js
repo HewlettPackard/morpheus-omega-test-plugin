@@ -506,14 +506,10 @@
 				return;
 			}
 			if (action === 'retry-event') {
-				var retryProcessId = target.getAttribute('data-process-id');
 				var retryEventId = target.getAttribute('data-event-id');
 				target.disabled = true;
 				setStatus(state, 'Retrying step…', true);
-				apiPost('/plugin/process-jobs/retry', {
-					processId: Number(retryProcessId),
-					eventId: Number(retryEventId)
-				}).then(function (data) {
+				apiPost('/api/processes/events/' + retryEventId + '/retry', {}).then(function (data) {
 					target.disabled = false;
 					if (data.success) {
 						setStatus(state, 'Retry dispatched. Refreshing…', true);
