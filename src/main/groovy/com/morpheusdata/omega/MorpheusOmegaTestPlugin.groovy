@@ -25,6 +25,7 @@ import com.morpheusdata.omega.baremetal.BaremetalProvisionProvider
 import com.morpheusdata.omega.datastore.DatastoreProvider
 import com.morpheusdata.omega.event.EventClusterSubscribingIntegration
 import com.morpheusdata.omega.event.EventGlobalSubscribingProvider
+import com.morpheusdata.omega.event.EventQualificationController
 import com.morpheusdata.omega.process.ProcessServiceComputeTypePackageProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleCloudProvider
 import com.morpheusdata.omega.process.ProcessServiceExampleProvisionProvider
@@ -66,6 +67,7 @@ class MorpheusOmegaTestPlugin extends Plugin {
 		this.registerProvider(new CollectionDatasetProvider(this, this.morpheus))
 		this.registerProvider(new BaremetalHostsDataSetProvider(this,this.morpheus))
 		this.registerProvider(new BaremetalResourcePoolDataSetProvider(this,this.morpheus))
+		this.controllers.add(new EventQualificationController(this, this.morpheus))
 
 	}
 

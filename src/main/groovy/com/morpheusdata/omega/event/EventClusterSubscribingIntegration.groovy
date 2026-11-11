@@ -72,7 +72,7 @@ class EventClusterSubscribingIntegration extends AbstractGenericIntegrationProvi
 	 */
 	@Override
 	MorpheusContext getMorpheus() {
-		return this.context
+		return this.morpheusContext
 	}
 
 	/**

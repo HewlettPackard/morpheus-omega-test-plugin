@@ -29,10 +29,6 @@ class AddonPackageTypeProvider implements ComputeTypePackageProvider {
 				this.plugin = plugin
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
-		@Override
 		boolean isPlugin() {
 				return true
 		}

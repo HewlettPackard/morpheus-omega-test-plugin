@@ -117,13 +117,8 @@ class BaremetalResourcePoolDataSetProvider extends AbstractDatasetProvider<Cloud
         return item.id
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     boolean isPlugin() {
         return true
     }
 }
-
 
