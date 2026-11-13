@@ -2,7 +2,6 @@ package com.morpheusdata.omega
 
 import com.morpheusdata.core.MorpheusContext
 import com.morpheusdata.core.providers.PluginProvider
-import com.morpheusdata.omega.event.EventQualificationController
 import spock.lang.Specification
 
 class MorpheusOmegaTestPluginSpec extends Specification {
@@ -21,7 +20,7 @@ class MorpheusOmegaTestPluginSpec extends Specification {
 		}
 		plugin.providers.findAll { it instanceof PluginProvider.EventSubscriberFacet }*.code.toSet() ==
 			['omega.event.all', 'omega.event.cluster-integration'].toSet()
-		plugin.controllers.any { it instanceof EventQualificationController && it.plugin.is(plugin) && it.morpheus.is(context) }
+		plugin.controllers.empty
 		0 * context._
 	}
 
