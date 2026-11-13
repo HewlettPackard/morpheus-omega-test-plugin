@@ -3,9 +3,9 @@ buildscript {
         mavenLocal()
         mavenCentral()
         maven { url "https://plugins.gradle.org/m2/" }
-				maven { url "https://nexus.bertramlabs.com/content/repositories/snapshots" }
-				maven { url "https://nexus.bertramlabs.com/content/repositories/releases" }
-				maven { url "https://nexus.bertramlabs.com/content/repositories/publicReleases" }
+				maven { url "https://nexus.morpheusdata.com/content/repositories/snapshots" }
+				maven { url "https://nexus.morpheusdata.com/content/repositories/releases" }
+				maven { url "https://nexus.morpheusdata.com/content/repositories/publicReleases" }
     }
     dependencies {
         classpath "com.github.johnrengelman:shadow:8.1.1"
@@ -35,9 +35,9 @@ java {
 repositories {
 	mavenLocal()
 	mavenCentral()
-	maven { url "https://nexus.bertramlabs.com/content/repositories/snapshots" }
-	maven { url "https://nexus.bertramlabs.com/content/repositories/releases" }
-	maven { url "https://nexus.bertramlabs.com/content/repositories/publicReleases" }
+	maven { url "https://nexus.morpheusdata.com/content/repositories/snapshots" }
+	maven { url "https://nexus.morpheusdata.com/content/repositories/releases" }
+	maven { url "https://nexus.morpheusdata.com/content/repositories/publicReleases" }
 }
 
 configurations {
@@ -75,6 +75,10 @@ sourceSets {
 	main {
 		compileClasspath += configurations.provided
 	}
+	test {
+		compileClasspath += configurations.provided
+		runtimeClasspath += configurations.provided
+	}
 }
 
 //Set plugin metadata information here that gets written into the jar
@@ -91,7 +95,7 @@ jar {
 				'Morpheus-Logo-Dark': 'assets/morpheus.svg',
 				'Morpheus-Labels': 'Plugin',
 				'Morpheus-Repo': 'https://github.com/hpe/morpheus-omega-test-plugin',
-				'Morpheus-Min-Appliance-Version': "8.0.7"
+				'Morpheus-Min-Appliance-Version': "9.3.0"
 		)
 	}
 }
@@ -107,6 +111,7 @@ task(console, dependsOn: 'classes', type: JavaExec) {
 }
 
 test {
+	useJUnitPlatform()
 	testLogging {
 		exceptionFormat = 'full'
 		showStandardStreams = true

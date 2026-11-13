@@ -85,7 +85,6 @@ class CollectionDatasetProvider extends AbstractDatasetProvider<Map, Long> {
 		return (Long)item.value
 	}
 
-	@Override
 	boolean isPlugin() {
 		return true
 	}
